@@ -1,0 +1,22 @@
+{
+"name": "Experimental",
+   "description": "was Page Redder",
+   "version": "666",
+   "permissions": [
+     "activeTab"
+   ],
+   "background": {
+     "scripts": ["bower_components/jquery/dist/jquery.js",
+                 "background.js"],
+      "persistent": false
+    },
+    "browser_action": {
+      "default_title": "Experimental"
+    },
+    "content_scripts": [{
+      "matches":["http://*/*"],
+      "js":["bower_components/jquery/dist/jquery.min.js"],
+      "run_at":"document_end"
+      }],
+    "manifest_version": 2
+  }

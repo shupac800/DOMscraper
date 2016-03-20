@@ -1,0 +1,5 @@
+.DS_Store
+bower_components
+node_modules
+icon.png
+jquery.min.js
