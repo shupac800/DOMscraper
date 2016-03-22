@@ -62,7 +62,7 @@ $(document).ready(function(){
 
       selectorAction(z,function(el) { $(el).addClass("highlighted"); } );
 
-      popUp(e);
+      popUp(e,z);
     });
   }
 
@@ -80,7 +80,7 @@ var mLeave = function(e,z) {  // THIS IS FUCKED UP
 }
 
 
-var popUp = function(e) {
+var popUp = function(e,z) {
   var popOrigin = e.target;
   console.log("event",e);
   //var rectObject = element.getBoundingClientRect();
@@ -96,9 +96,25 @@ var popUp = function(e) {
   $("#popUp").on("mouseleave",function(){killPopUp(popOrigin);});
 
   // add listener to each attribute displayed
-  $("#popUp li").each(function (idx,item) {
+  $("#popUp li").each(function(idx,item) {
     $(item).click(function(e) {
       console.log("clicked on item "+idx+", item: ",$(item).html());
+      console.log("writing to array:");
+      var nodeMapKey = idx - 1;
+      if (idx === 0) {  // clicked on the first item in the pop-up menu
+        $(z).each(function(i,item) {
+          console.log($(item).html());
+          array1.push($(item).html());
+        });
+      } else {         // clicked on item other than first one
+        $(z).each(function(i,el) {
+          // note similary to parseAttributes -- DRY this up
+          var namedNodeMap = el.attributes;  // .attributes returns an object with keys "0", "1", "2", ...
+          var keys = Object.keys(el.attributes);
+          console.log("index",nodeMapKey);
+          console.log(namedNodeMap[keys[nodeMapKey]].name + ": " + namedNodeMap[keys[nodeMapKey]].value);
+        });
+      }
       return false;  // critical!
     });
   });
@@ -134,7 +150,6 @@ var processKeypress = function(e,selector){
 
   }
 };
-
 
 var parseAttributes = function(el) {
   var namedNodeMap = el.attributes;  // .attributes returns an object with keys "0", "1", "2", ...
