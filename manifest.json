@@ -16,6 +16,7 @@
     "content_scripts": [{
       "matches":["http://*/*"],
       "js":["bower_components/jquery/dist/jquery.min.js"],
+      "css":["styles.css"],
       "run_at":"document_end"
       }],
     "manifest_version": 2
