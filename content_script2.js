@@ -45,15 +45,11 @@ $(document).ready(function(){
     q[i].addEventListener("click",function(e) {
       e.preventDefault();  // redundant of stopPropagation?
       e.stopPropagation();
-      var oldBgColor = e.target.style.backgroundColor;
-      popUp(e.target);
 
-      // console.log("parentNode name for this element",e.target.parentNode);
-      // console.log("parentNodeX2 name for this element",e.target.parentNode.parentNode);
-      // console.log("tag name for this element:",e.target.tagName);
-      // console.log("class list for this element:",e.target.classList);
-      // console.log("index for this element",$(this).index());
-      // console.log("attributes list for this element:",e.target.attributes);
+      //document.addEventListener("keypress", function(e){processKeypress(e,z);});
+      //var oldBgColor = e.target.style.backgroundColor;
+
+      //$(e.target).on("mouseleave",function(e) {mLeave(e,z)});
 
       var tag = e.target.tagName;
       var clist = e.target.classList;
@@ -61,24 +57,43 @@ $(document).ready(function(){
       var classStr = "";
       clist.forEach((thisClass,idx) => {
         classStr += "." + thisClass;
-      })
-      var z = `${tag}${classStr}:nth-child(${index + 1})`;
-      //z = "a:nth-of-type(2)";
-      //console.log("z = ",z);
-      //console.log("selects " + $(z).length + " elements");
-      document.addEventListener("keypress", function(e){processKeypress(e,z);});
-      e.target.addEventListener("mouseout", function(e) {
-        console.log("got mouseout");
-        killPopUp();
-        // cancel keyup listener on mouseout
-        document.removeEventListener("keypress", processKeypress);
-        selectorAction(z,function(el) { $(el).css({"background-color":oldBgColor});} );
       });
+      var z = `${tag}${classStr}:nth-child(${index + 1})`;
+
       selectorAction(z,function(el) { $(el).css({"background-color":"#3CE"});} );
+
+      popUp(e);
     });
   }
 
 });  // end document.ready()
+
+var mLeave = function(e,z) {  // THIS IS FUCKED UP
+  console.log("got mouseleave");
+  killPopUp();
+  // cancel keyup listener on mouseout
+  document.removeEventListener("keypress", processKeypress);
+  selectorAction(z,function(el) { $(el).css({"background-color":"#FFF"});} );
+  // cause this listener to self-destruct after it executes
+  $(e.target).off("mouseleave",mLeave);
+  return false; // necessary? helpful?
+}
+
+
+var popUp = function(e) {
+  console.log("event",e);
+  //var rectObject = element.getBoundingClientRect();
+  //console.log("rectObject",rectObject);
+  $("body").append(`<div id='popUp'></div>`);
+  $("#popUp").offset({top:e.pageY, left:e.pageX});  
+  // positioning an element using pageX, pageY or clientX, clientY triggers mouseleave or mouseout -- why??
+  $("#popUp").html(parseAttributes(e.target));
+};
+
+var killPopUp = function() {
+  $("#popUp").remove();
+};
+
 
 var selectorAction = function(selector,fn) {
   $(selector).each( function(idx,element) { fn(element); } );
@@ -86,6 +101,7 @@ var selectorAction = function(selector,fn) {
 
 
 var processKeypress = function(e,selector){
+  //should use event.which
   console.log(e.keyCode);
   if (e.keyCode === 108) { // lowercase "l" for less
     console.log("less");
@@ -104,32 +120,15 @@ var processKeypress = function(e,selector){
 };
 
 
-var popUp = function(element,x,y) {
-  //var rectObject = element.getBoundingClientRect();
-  //console.log("rectObject",rectObject);
-  $("body").append(`<div id='popUp'></div>`);
-  $("#popUp").css( {
-    "position":"absolute",
-    "top":y,
-    "left":x
-  });
-  $("#popUp").html(parseAttributes(element));
-
-};
-
-var killPopUp = function() {
-  $("#popUp").remove();
-};
-
 var parseAttributes = function(el) {
   var namedNodeMap = el.attributes;  // .attributes returns an object with keys "0", "1", "2", ...
   var keys = Object.keys(el.attributes);
   var i;
-  var string = "text: " + $(el).html() + "<br>";
+  var string = "<ul style='list-style-type:none'><li class='popUpItem'>text: " + $(el).html() + "</li>";
   for (i = "0"; i < keys.length; i++) {
-    string += namedNodeMap[keys[i]].name + ": " + namedNodeMap[keys[i]].value + "<br>";
+    string += "<li class='popUpItem'>" + namedNodeMap[keys[i]].name + ": " + namedNodeMap[keys[i]].value + "</li>";
   }
-  return string;
+  return string + "</ul>";
 };
 
 var doScrape = function() {
