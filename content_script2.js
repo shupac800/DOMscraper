@@ -60,7 +60,7 @@ $(document).ready(function(){
       });
       var z = `${tag}${classStr}:nth-child(${index + 1})`;
 
-      selectorAction(z,function(el) { $(el).css({"background-color":"#3CE"});} );
+      selectorAction(z,function(el) { $(el).addClass("highlighted"); } );
 
       popUp(e);
     });
@@ -73,7 +73,7 @@ var mLeave = function(e,z) {  // THIS IS FUCKED UP
   killPopUp();
   // cancel keyup listener on mouseout
   document.removeEventListener("keypress", processKeypress);
-  selectorAction(z,function(el) { $(el).css({"background-color":"#FFF"});} );
+  selectorAction(z,function(el) { $(el).removeClass("highlighted"); } );
   // cause this listener to self-destruct after it executes
   $(e.target).off("mouseleave",mLeave);
   return false; // necessary? helpful?
@@ -81,17 +81,33 @@ var mLeave = function(e,z) {  // THIS IS FUCKED UP
 
 
 var popUp = function(e) {
+  var popOrigin = e.target;
   console.log("event",e);
   //var rectObject = element.getBoundingClientRect();
   //console.log("rectObject",rectObject);
   $("body").append(`<div id='popUp'></div>`);
   $("#popUp").offset({top:e.pageY, left:e.pageX});  
   // positioning an element using pageX, pageY or clientX, clientY triggers mouseleave or mouseout -- why??
-  $("#popUp").html(parseAttributes(e.target));
+  $("#popUp").html(parseAttributes(popOrigin));
+
+// have to make sure
+
+  // add listener to close #popUp if mouse moves out of it
+  $("#popUp").on("mouseleave",function(){killPopUp(popOrigin);});
+
+  // add listener to each attribute displayed
+  $("#popUp li").each(function (idx,item) {
+    $(item).click(function(e) {
+      console.log("clicked on item "+idx+", item: ",$(item).html());
+      return false;  // critical!
+    });
+  });
 };
 
-var killPopUp = function() {
+var killPopUp = function(popOrigin) {
   $("#popUp").remove();
+  //$(popOrigin).html("fuck you");
+  $(".highlighted").removeClass("highlighted");
 };
 
 
