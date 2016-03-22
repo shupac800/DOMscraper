@@ -1,6 +1,7 @@
 "use strict";
 
-var array1 = [];
+var arrays = [];
+var fields = [];
 
 $(document).ready(function(){
 //  console.clear();
@@ -46,10 +47,7 @@ $(document).ready(function(){
       e.preventDefault();  // redundant of stopPropagation?
       e.stopPropagation();
 
-      //document.addEventListener("keypress", function(e){processKeypress(e,z);});
-      //var oldBgColor = e.target.style.backgroundColor;
-
-      //$(e.target).on("mouseleave",function(e) {mLeave(e,z)});
+      document.addEventListener("keypress", function(e){processKeypress(e,z);});
 
       var tag = e.target.tagName;
       var clist = e.target.classList;
@@ -68,17 +66,6 @@ $(document).ready(function(){
 
 });  // end document.ready()
 
-var mLeave = function(e,z) {  // THIS IS FUCKED UP
-  console.log("got mouseleave");
-  killPopUp();
-  // cancel keyup listener on mouseout
-  document.removeEventListener("keypress", processKeypress);
-  selectorAction(z,function(el) { $(el).removeClass("highlighted"); } );
-  // cause this listener to self-destruct after it executes
-  $(e.target).off("mouseleave",mLeave);
-  return false; // necessary? helpful?
-}
-
 
 var popUp = function(e,z) {
   var popOrigin = e.target;
@@ -90,31 +77,35 @@ var popUp = function(e,z) {
   // positioning an element using pageX, pageY or clientX, clientY triggers mouseleave or mouseout -- why??
   $("#popUp").html(parseAttributes(popOrigin));
 
-// have to make sure
-
   // add listener to close #popUp if mouse moves out of it
   $("#popUp").on("mouseleave",function(){killPopUp(popOrigin);});
 
   // add listener to each attribute displayed
   $("#popUp li").each(function(idx,item) {
     $(item).click(function(e) {
-      console.log("clicked on item "+idx+", item: ",$(item).html());
-      console.log("writing to array:");
+      //console.log("clicked on item "+idx+", item: ",$(item).html());
+      var scrapeKey = "monkey";
+      var scrapeValues = [];
       var nodeMapKey = idx - 1;
       if (idx === 0) {  // clicked on the first item in the pop-up menu
-        $(z).each(function(i,item) {
-          console.log($(item).html());
-          array1.push($(item).html());
+        $(z).each(function(i,el) {
+          //console.log($(el).html());
+          scrapeValues.push($(el).html());
         });
       } else {         // clicked on item other than first one
         $(z).each(function(i,el) {
           // note similary to parseAttributes -- DRY this up
           var namedNodeMap = el.attributes;  // .attributes returns an object with keys "0", "1", "2", ...
           var keys = Object.keys(el.attributes);
-          console.log("index",nodeMapKey);
           console.log(namedNodeMap[keys[nodeMapKey]].name + ": " + namedNodeMap[keys[nodeMapKey]].value);
+          scrapeValues.push(namedNodeMap[keys[nodeMapKey]].value);
         });
       }
+      console.log("outputting array",scrapeValues);
+      arrays.push(scrapeValues);  // "arrays" becomes array of arrays
+      fields.push("Key_" + arrays.length);
+      console.log("fields:",fields);
+      console.log("arrays:",arrays);
       return false;  // critical!
     });
   });
@@ -140,14 +131,7 @@ var processKeypress = function(e,selector){
   } else if (e.keyCode === 109) { // lowercase "m" for more
     console.log("more");
   } else if (e.keyCode === 97) { // lowercase "a" for add
-    array1 = [];
-    $(selector).each( (idx,element) => {
-      console.log("processing element",element);
-      array1.push($(element).html());
-    });
-    console.log(array1);
-    // console.log("adding ");
-
+    uploadScrape();
   }
 };
 
@@ -162,13 +146,23 @@ var parseAttributes = function(el) {
   return string + "</ul>";
 };
 
-var doScrape = function() {
-  // function that will extract information from the DOM and put it into a JSON object
-};
-
 var uploadScrape = function() {
-  // function that will upload the JSON object to Firebase
-  // and spawn a new window showing the results
+  // build JSON object
+  var dataObj = {};
+  var numOfThings = arrays[0].length;
+  for (var h = 0; h <= 2; h++) {
+    var thisThing = "Thing" + h;
+    for (var i = 0; i < fields.length; i++) {
+      dataObj[thisThing] = {};
+      for (var j = 0; j < arrays.length; j++) {
+        var thisKey = fields[j];
+        var thisValue = arrays[i][j];
+        dataObj[thisThing][thisKey] = thisValue;
+        console.log("wrote dataObj."+thisThing+"."+thisKey+" = "+thisValue);
+      }
+    }
+  }
+  //console.log("dataObj is",dataObj);
 };
 
 var selectFromAttributes = function(element) {
