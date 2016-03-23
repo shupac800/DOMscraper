@@ -1,12 +1,12 @@
 "use strict";
 
+// initialize globals
 var arrays = [];
 var fields = [];
 
 $(document).ready(function(){
   console.clear();
   console.log("running");
-  spawnWindow();
 
 // disable all buttons and links:
   $("a").css("cursor","arrow").click(false);  // maybe this belongs on all elements, not just A?
@@ -43,6 +43,9 @@ $(document).ready(function(){
     }
   }
 
+  popControlWin();  // spawn control window
+  $("#button-upload").on("click",uploadScrape);
+
   // add event listeners that allow DOM elements and their equivalents to be selected
   var q = document.getElementsByTagName("*");
   for (var i = 0; i < q.length; i++) {
@@ -50,13 +53,13 @@ $(document).ready(function(){
       e.preventDefault();  // redundant of stopPropagation?
       e.stopPropagation();
 
-      document.addEventListener("keypress", (e) => {processKeypress(e,z);});
+      //document.addEventListener("keypress", (e) => {processKeypress(e,z);});
 
       var tag = e.target.tagName;
       var clist = e.target.classList;
       var index = $(e.target).index();
       var classStr = "";
-      clist.forEach((thisClass,idx) => {
+      clist.forEach( (thisClass,idx) => {
         classStr += "." + thisClass;
       });
       var z = `${tag}${classStr}:nth-child(${index + 1})`;
@@ -83,13 +86,14 @@ function popUp(e,z) {
   // add listener to each attribute displayed
   $("#popUp li").each( (idx,item) => {
     $(item).click( (e) => {
-      console.log("clicked on item "+idx+", item: ",$(item).text());
+      console.log("clicked on index "+idx+", item: ",$(item).html());
       var scrapeValues = [];
       var nodeMapKey = idx - 1;
       if (idx === 0) {  // clicked on the first item in the pop-up menu, which is always "text"
         $(z).each( (i,el) => {
           scrapeValues.push($(el).html());
         });
+        console.log("added " + scrapeValues.length + " values to scrapeValues");
       } else {         // clicked on item other than first one, meaning, an attribute
         $(z).each( (i,el) => {
           // note similary to parseAttributes -- DRY this up
@@ -99,39 +103,38 @@ function popUp(e,z) {
           scrapeValues.push(namedNodeMap[keys[nodeMapKey]].value);
         });
       }
-      // console.log("outputting array",scrapeValues);
+      // update popCtrlWin with new no. of keys tracked
+      // ******** UPGRADE: have user enter a key name for this set of values **********
+      var numKeysSelected = $("#numKeysSelected").html().split(" ")[0];
+      numKeysSelected++;
+      $("#numKeysSelected").text(numKeysSelected + " keys selected");
+      console.log("outputting array",scrapeValues);
       arrays.push(scrapeValues);  // "arrays" becomes array of arrays
       fields.push("Key_" + arrays.length);
-      // console.log("fields:",fields);
-      // console.log("arrays:",arrays);
+      console.log("fields:",fields);
+      console.log("arrays:",arrays);
       return false;  // critical!
     });
   });
 }
+
+
+function popControlWin() {
+  $("body").append("<div id='popCtrlWin'><p>DOMscraper</p><p id='numKeysSelected'>0 keys selected</p><button id='button-upload'>Upload</button></div>");
+  $("#popCtrlWin").draggable();
+}
+
 
 function killPopUp(popOrigin) {
   $("#popUp").remove();
   $(".highlighted").removeClass("highlighted");
 }
 
+
 function selectorAction(selector,fn) {
   $(selector).each( function(idx,element) { fn(element); } );
 }
 
-
-function processKeypress(e,selector) {
-  //should use event.which
-  console.log("detected keypress",e.keyCode);
-  if (e.keyCode === 108) { // lowercase "l" for less
-    console.log("less");
-  } else if (e.keyCode === 109) { // lowercase "m" for more
-    console.log("more");
-  } else if (e.keyCode === 97) { // lowercase "a" for add
-    uploadScrape();
-    arrays = [];
-    fields = [];
-  }
-}
 
 function parseAttributes(el) {
   var namedNodeMap = el.attributes;  // .attributes returns an object with keys "0", "1", "2", ...
@@ -144,36 +147,45 @@ function parseAttributes(el) {
   return string + "</ul>";
 }
 
+
 function uploadScrape() {
-  // build JSON object
-  // idea: use map, filter, reduce
+  // idea: use map, filter, reduce to build JSON object?
+
+  // initialize objects
   var dataObj = {};
-  for (var h = 0; h < arrays.length; h++) {
-    var thisThing = '"Thing_' + h + '"';
+  for (var h = 0; h < arrays[0].length; h++) {
+    var thisThing = '"Thing_' + h + '"';  // JSON requires keys to be in quotes
     dataObj[thisThing] = {};
-    for (var i = 0; i < fields.length; i++) {
+  }
+
+  // populate objects
+  for (var i = 0; i < fields.length; i++) {
       var thisKey = '"' + fields[i] + '"';
+      console.log("fields[i]",i,fields[i]);
+    for (var h = 0; h < arrays[0].length; h++) {
+      var thisThing = '"Thing_' + h + '"';  // JSON requires keys to be in quotes
       var thisValue = arrays[i][h];
       dataObj[thisThing][thisKey] = thisValue;
-      console.log("wrote dataObj."+thisThing+"."+thisKey+" = "+thisValue);
+      console.log("wrote dataObj." + thisThing + "." + thisKey + " = " + thisValue);
     }
   }
-  //console.log("dataObj is",dataObj);
   var JSONobj = {"data": dataObj};
+
+  // post JSON object to Firebase under new key
   $.ajax({
-    url: "https://domscraper.firebaseio.com/data/.json",
+    url: "https://domscraper.firebaseio.com/datasets/.json",
     method: "POST",
     data: JSON.stringify(JSONobj)
-  }).done(function(kk) {  // AJAX returns object {name: newkeyname}
-    console.log("posted new key",kk.name);
+  }).done(function(o) {  // AJAX returns object {name: newkeyname}
+    console.log("posted new key",o.name);
+    // spawn a new tab or window that displays, in tabular format, the data you just collected
+    // re-initialize globals
+    spawnWindow(o.name);
+    arrays = [];
+    fields = [];
+    $("#numKeysSelected").html("0 keys selected");  // reset key counter
+    // also post a function that can be used as the basis for a pseudo-API
   });
-  // var x = new XMLHttpRequest();
-  // x.open("POST","https://domscraper.firebaseio.com/data/.json");
-  // x.send(JSON.stringify(JSONobj));
-
-  // also post a function that can be used as the basis for a pseudo-API
-  // spawn a new tab or window that displays, in tabular format, the data you just collected
-  spawnWindow(kk.name);
 }
 
 function augmentCSS() {
@@ -181,36 +193,7 @@ function augmentCSS() {
   $("head").append('<style type="text/css">#popUp {border: 2px solid black; background-color: #F70; } #popUp ul {margin: 0; padding: 0; } .popUpItem {margin: 0; padding: 0 0 0 5px; } .popUpItem:hover {background-color: blue; color: white; } .highlighted {background-color: #3CE; }</style>');
 }
 
-function spawnWindow() {
-  window.open("showResults.html").focus();
-  // $.ajax({
-  //   url: "https://domscraper.firebaseio.com/data/" + fbKey + ".json",
-  //   method: "GET"
-  // }).done(function(obj) {
-    var obj = {"data" : [
-                        {"Thing_1" :
-                                     {"Key_1" : "USA",
-                                      "Key_2" : "Idaho",
-                                      "Key_3" : "Coeur D'Alene"} },
-                        {"Thing_2" : 
-                                     {"Key_1" : "Canada",
-                                      "Key_2" : "Quebec",
-                                      "Key_3" : "Ottawa"} },
-                        {"Thing_3" :
-                                     {"Key_1" : "Mexico",
-                                      "Key_2" : "Baja California",
-                                      "Key_3" : "Cabo San Lucas"} }
-                        ] };
-    var things = obj.data;  // array
-    var str = "<tr>";
-    obj.data.forEach( (thing,i) => {
-      var thingKeys = Object.keys(thing);
-      thingKeys.forEach( (thisKey,j) => {
-        str += thisKey + ": " + thing[thisKey] + "...";
-      });
-      str += "</tr>";
-    });
-    $("body").append("<p>FUCK YOU</p>");
-    $("#stuffGoesHere").html("FUCK");
-  // });
+function spawnWindow(firebaseKey) {
+  document.cookie =  "firebaseKey=" + firebaseKey;
+  window.open("http://localhost:8080/showResults.html").focus();
 }

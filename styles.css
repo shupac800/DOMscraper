@@ -1,6 +1,6 @@
 #popUp {
   border: 2px solid black;
-  background-color: #F70;
+  background-color: #F90;
 }
 
 #popUp ul {
@@ -20,4 +20,11 @@
 
 .highlighted {
   background-color: #3CE;
+}
+
+#popCtrlWin {
+  border: 2px solid black;
+  background-color: yellow;
+  color: blue;
+  width: 120px;
 }
