@@ -4,7 +4,7 @@ var arrays = [];
 var fields = [];
 
 $(document).ready(function(){
-//  console.clear();
+  console.clear();
   console.log("running");
 
 // disable all buttons and links:
@@ -19,6 +19,8 @@ $(document).ready(function(){
     var elClone = b[i].cloneNode(true);
     b[i].parentNode.replaceChild(elClone, b[i]);  // can't commit suicide, but can commit infanticide
   }
+  //
+  augmentCSS();
 
   // remove element attributes that take action upon click
   var q = document.getElementsByTagName("*");
@@ -47,7 +49,7 @@ $(document).ready(function(){
       e.preventDefault();  // redundant of stopPropagation?
       e.stopPropagation();
 
-      document.addEventListener("keypress", function(e){processKeypress(e,z);});
+      document.addEventListener("keypress", (e) => {processKeypress(e,z);});
 
       var tag = e.target.tagName;
       var clist = e.target.classList;
@@ -58,42 +60,37 @@ $(document).ready(function(){
       });
       var z = `${tag}${classStr}:nth-child(${index + 1})`;
 
-      selectorAction(z,function(el) { $(el).addClass("highlighted"); } );
+      selectorAction(z, (el) => { $(el).addClass("highlighted"); } );
 
       popUp(e,z);
     });
   }
-
 });  // end document.ready()
 
 
-var popUp = function(e,z) {
+function popUp(e,z) {
   var popOrigin = e.target;
-  console.log("event",e);
-  //var rectObject = element.getBoundingClientRect();
-  //console.log("rectObject",rectObject);
+  //console.log("event",e);
   $("body").append(`<div id='popUp'></div>`);
   $("#popUp").offset({top:e.pageY, left:e.pageX});  
   // positioning an element using pageX, pageY or clientX, clientY triggers mouseleave or mouseout -- why??
   $("#popUp").html(parseAttributes(popOrigin));
 
   // add listener to close #popUp if mouse moves out of it
-  $("#popUp").on("mouseleave",function(){killPopUp(popOrigin);});
+  $("#popUp").on("mouseleave", () => { killPopUp(popOrigin); });
 
   // add listener to each attribute displayed
-  $("#popUp li").each(function(idx,item) {
-    $(item).click(function(e) {
+  $("#popUp li").each( (idx,item) => {
+    $(item).click( (e) => {
       //console.log("clicked on item "+idx+", item: ",$(item).html());
-      var scrapeKey = "monkey";
       var scrapeValues = [];
       var nodeMapKey = idx - 1;
-      if (idx === 0) {  // clicked on the first item in the pop-up menu
-        $(z).each(function(i,el) {
-          //console.log($(el).html());
+      if (idx === 0) {  // clicked on the first item in the pop-up menu, which is always "text"
+        $(z).each( (i,el) => {
           scrapeValues.push($(el).html());
         });
       } else {         // clicked on item other than first one
-        $(z).each(function(i,el) {
+        $(z).each( (i,el) => {
           // note similary to parseAttributes -- DRY this up
           var namedNodeMap = el.attributes;  // .attributes returns an object with keys "0", "1", "2", ...
           var keys = Object.keys(el.attributes);
@@ -101,41 +98,41 @@ var popUp = function(e,z) {
           scrapeValues.push(namedNodeMap[keys[nodeMapKey]].value);
         });
       }
-      console.log("outputting array",scrapeValues);
+      // console.log("outputting array",scrapeValues);
       arrays.push(scrapeValues);  // "arrays" becomes array of arrays
       fields.push("Key_" + arrays.length);
-      console.log("fields:",fields);
-      console.log("arrays:",arrays);
+      // console.log("fields:",fields);
+      // console.log("arrays:",arrays);
       return false;  // critical!
     });
   });
-};
+}
 
-var killPopUp = function(popOrigin) {
+function killPopUp(popOrigin) {
   $("#popUp").remove();
-  //$(popOrigin).html("fuck you");
   $(".highlighted").removeClass("highlighted");
-};
+}
 
-
-var selectorAction = function(selector,fn) {
+function selectorAction(selector,fn) {
   $(selector).each( function(idx,element) { fn(element); } );
-};
+}
 
 
-var processKeypress = function(e,selector){
+function processKeypress(e,selector) {
   //should use event.which
-  console.log(e.keyCode);
+  console.log("detected keypress",e.keyCode);
   if (e.keyCode === 108) { // lowercase "l" for less
     console.log("less");
   } else if (e.keyCode === 109) { // lowercase "m" for more
     console.log("more");
   } else if (e.keyCode === 97) { // lowercase "a" for add
     uploadScrape();
+    arrays = [];
+    fields = [];
   }
-};
+}
 
-var parseAttributes = function(el) {
+function parseAttributes(el) {
   var namedNodeMap = el.attributes;  // .attributes returns an object with keys "0", "1", "2", ...
   var keys = Object.keys(el.attributes);
   var i;
@@ -144,30 +141,40 @@ var parseAttributes = function(el) {
     string += "<li class='popUpItem'>" + namedNodeMap[keys[i]].name + ": " + namedNodeMap[keys[i]].value + "</li>";
   }
   return string + "</ul>";
-};
+}
 
-var uploadScrape = function() {
+function uploadScrape() {
   // build JSON object
+  // idea: use map, filter, reduce
   var dataObj = {};
-  var numOfThings = arrays[0].length;
-  for (var h = 0; h <= 2; h++) {
-    var thisThing = "Thing" + h;
+  for (var h = 0; h < arrays.length; h++) {
+    var thisThing = '"Thing_' + h + '"';
+    dataObj[thisThing] = {};
     for (var i = 0; i < fields.length; i++) {
-      dataObj[thisThing] = {};
-      for (var j = 0; j < arrays.length; j++) {
-        var thisKey = fields[j];
-        var thisValue = arrays[i][j];
-        dataObj[thisThing][thisKey] = thisValue;
-        console.log("wrote dataObj."+thisThing+"."+thisKey+" = "+thisValue);
-      }
+      var thisKey = '"' + fields[i] + '"';
+      var thisValue = arrays[i][h];
+      dataObj[thisThing][thisKey] = thisValue;
+      console.log("wrote dataObj."+thisThing+"."+thisKey+" = "+thisValue);
     }
   }
   //console.log("dataObj is",dataObj);
-};
+  var JSONobj = {"data": dataObj};
+  $.ajax({
+    url: "https://domscraper.firebaseio.com/data/.json",
+    method: "POST",
+    data: JSON.stringify(JSONobj);
+  }).done(function() {
+    console.log("posted!");
+  });
+  // var x = new XMLHttpRequest();
+  // x.open("POST","https://domscraper.firebaseio.com/data/.json");
+  // x.send(JSON.stringify(JSONobj));
 
-var selectFromAttributes = function(element) {
-  // go through each item in the pop-up menu
-  // highlight the one you're hovering over
-  // if you click an item, add that data set to the global array
+  // also post a function that can be used as the basis for a pseudo-API
+  // spawn a new tab or window that displays, in tabular format, the data you just collected
+}
 
-};
+function augmentCSS() {
+  // this allows our CSS definitions to be used on the web page we're scraping
+  $("head").append('<style type="text/css">#popUp {border: 2px solid black; background-color: #F70; } #popUp ul {margin: 0; padding: 0; } .popUpItem {margin: 0; padding: 0 0 0 5px; } .popUpItem:hover {background-color: blue; color: white; } .highlighted {background-color: #3CE; }</style>');
+}

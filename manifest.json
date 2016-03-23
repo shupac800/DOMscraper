@@ -1,10 +1,11 @@
 {
 "name": "Experimental",
-   "description": "was Page Redder",
+   "description": "",
    "version": "666",
    "permissions": [
      "activeTab"
    ],
+   "content_security_policy": "script-src 'self' https://cdn.firebase.com https://*.firebaseio.com; object-src 'self'",
    "background": {
      "scripts": ["bower_components/jquery/dist/jquery.js",
                  "background.js"],
