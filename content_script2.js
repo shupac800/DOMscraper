@@ -6,6 +6,7 @@ var fields = [];
 $(document).ready(function(){
   console.clear();
   console.log("running");
+  spawnWindow();
 
 // disable all buttons and links:
   $("a").css("cursor","arrow").click(false);  // maybe this belongs on all elements, not just A?
@@ -82,14 +83,14 @@ function popUp(e,z) {
   // add listener to each attribute displayed
   $("#popUp li").each( (idx,item) => {
     $(item).click( (e) => {
-      //console.log("clicked on item "+idx+", item: ",$(item).html());
+      console.log("clicked on item "+idx+", item: ",$(item).text());
       var scrapeValues = [];
       var nodeMapKey = idx - 1;
       if (idx === 0) {  // clicked on the first item in the pop-up menu, which is always "text"
         $(z).each( (i,el) => {
           scrapeValues.push($(el).html());
         });
-      } else {         // clicked on item other than first one
+      } else {         // clicked on item other than first one, meaning, an attribute
         $(z).each( (i,el) => {
           // note similary to parseAttributes -- DRY this up
           var namedNodeMap = el.attributes;  // .attributes returns an object with keys "0", "1", "2", ...
@@ -162,9 +163,9 @@ function uploadScrape() {
   $.ajax({
     url: "https://domscraper.firebaseio.com/data/.json",
     method: "POST",
-    data: JSON.stringify(JSONobj);
-  }).done(function() {
-    console.log("posted!");
+    data: JSON.stringify(JSONobj)
+  }).done(function(kk) {  // AJAX returns object {name: newkeyname}
+    console.log("posted new key",kk.name);
   });
   // var x = new XMLHttpRequest();
   // x.open("POST","https://domscraper.firebaseio.com/data/.json");
@@ -172,9 +173,44 @@ function uploadScrape() {
 
   // also post a function that can be used as the basis for a pseudo-API
   // spawn a new tab or window that displays, in tabular format, the data you just collected
+  spawnWindow(kk.name);
 }
 
 function augmentCSS() {
   // this allows our CSS definitions to be used on the web page we're scraping
   $("head").append('<style type="text/css">#popUp {border: 2px solid black; background-color: #F70; } #popUp ul {margin: 0; padding: 0; } .popUpItem {margin: 0; padding: 0 0 0 5px; } .popUpItem:hover {background-color: blue; color: white; } .highlighted {background-color: #3CE; }</style>');
+}
+
+function spawnWindow() {
+  window.open("showResults.html").focus();
+  // $.ajax({
+  //   url: "https://domscraper.firebaseio.com/data/" + fbKey + ".json",
+  //   method: "GET"
+  // }).done(function(obj) {
+    var obj = {"data" : [
+                        {"Thing_1" :
+                                     {"Key_1" : "USA",
+                                      "Key_2" : "Idaho",
+                                      "Key_3" : "Coeur D'Alene"} },
+                        {"Thing_2" : 
+                                     {"Key_1" : "Canada",
+                                      "Key_2" : "Quebec",
+                                      "Key_3" : "Ottawa"} },
+                        {"Thing_3" :
+                                     {"Key_1" : "Mexico",
+                                      "Key_2" : "Baja California",
+                                      "Key_3" : "Cabo San Lucas"} }
+                        ] };
+    var things = obj.data;  // array
+    var str = "<tr>";
+    obj.data.forEach( (thing,i) => {
+      var thingKeys = Object.keys(thing);
+      thingKeys.forEach( (thisKey,j) => {
+        str += thisKey + ": " + thing[thisKey] + "...";
+      });
+      str += "</tr>";
+    });
+    $("body").append("<p>FUCK YOU</p>");
+    $("#stuffGoesHere").html("FUCK");
+  // });
 }
