@@ -17,17 +17,28 @@
                                       "Key_3" : "Cabo San Lucas"} 
                         }
               };
+    // header row
     var things = Object.keys(obj.data);
     var str = "";
+    var thingKeys = Object.keys(obj.data[things[0]]);
+    console.log("thingKeys",thingKeys);
+    str += "<table><tr><td></td>"
+    thingKeys.forEach( (thisKey,i) => {
+      str += "<td>" + thisKey + "</td>";
+    });
+    str += "</tr>";
+    // data rows
     things.forEach( (thing,i) => {
       console.log(obj.data[thing]);
       var thingKeys = Object.keys(obj.data[thing]);
+      str += "<td>" + thing;
       thingKeys.forEach( (thisKey,j) => {
         console.log("thisKey",thisKey);
         console.log("obj.data[thing][thisKey]",obj.data[thing][thisKey]);
-        str += thisKey + ": " + thing[thisKey] + "...";
+        str += "<td>" + obj.data[thing][thisKey] + "</td>";
       });
-      str += "<br>";
+      str += "</tr>";
     });
+    str += "</table>"
     document.getElementById("stuffGoesHere").innerHTML = str;
   // });
