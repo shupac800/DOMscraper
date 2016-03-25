@@ -12,3 +12,6 @@
     win.querySelector("body").style.backgroundColor = "yellow";
   });
 //});
+
+
+// use popup.js to display splash screen with instructions

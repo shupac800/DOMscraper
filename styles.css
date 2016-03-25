@@ -1,4 +1,6 @@
 #popUp {
+  position:relative;
+  z-index: 999;
   border: 2px solid black;
   background-color: #F90;
 }
@@ -23,8 +25,12 @@
 }
 
 #popCtrlWin {
+  position: fixed;
+  z-index: 998;
+  top: 75px;
+  left: 650px;
   border: 2px solid black;
-  background-color: yellow;
-  color: blue;
+  background-color: #FFEBDE;
+  color: black;
   width: 120px;
 }

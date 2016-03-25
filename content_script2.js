@@ -8,7 +8,7 @@ $(document).ready(function(){
   console.clear();
   console.log("running");
 
-// disable all buttons and links:
+  // disable all buttons and links:
   $("a").css("cursor","arrow").click(false);  // maybe this belongs on all elements, not just A?
   $("img").css("cursor","arrow").click(false);  // successfully disables clicks on cars.com car images
   $(":input").prop("disabled",true);
@@ -20,8 +20,6 @@ $(document).ready(function(){
     var elClone = b[i].cloneNode(true);
     b[i].parentNode.replaceChild(elClone, b[i]);  // can't commit suicide, but can commit infanticide
   }
-  //
-  augmentCSS();
 
   // remove element attributes that take action upon click
   var q = document.getElementsByTagName("*");
@@ -42,6 +40,8 @@ $(document).ready(function(){
       }
     }
   }
+
+  augmentCSS();  // inject our CSS definitions into main document
 
   popControlWin();  // spawn control window
   $("#button-upload").on("click",uploadScrape);
@@ -121,7 +121,7 @@ function popUp(e,z) {
 
 function popControlWin() {
   $("body").append("<div id='popCtrlWin'><p>DOMscraper</p><p id='numKeysSelected'>0 keys selected</p><button id='button-upload'>Upload</button></div>");
-  $("#popCtrlWin").draggable();
+  //$("#popCtrlWin").draggable();
 }
 
 
@@ -154,7 +154,8 @@ function uploadScrape() {
   // initialize objects
   var dataObj = {};
   for (var h = 0; h < arrays[0].length; h++) {
-    var thisThing = '"Thing_' + h + '"';  // JSON requires keys to be in quotes
+    var hstr = h < 10 ? "0" + h : h; // pad numbers less than 10 with leading 0 (what if 100 or more Things?)
+    var thisThing = '"Thing_' + hstr + '"';  // JSON requires keys to be in quotes
     dataObj[thisThing] = {};
   }
 
@@ -163,7 +164,8 @@ function uploadScrape() {
       var thisKey = '"' + fields[i] + '"';
       console.log("fields[i]",i,fields[i]);
     for (var h = 0; h < arrays[0].length; h++) {
-      var thisThing = '"Thing_' + h + '"';  // JSON requires keys to be in quotes
+      var hstr = h < 10 ? "0" + h : h; // pad numbers less than 10 with leading 0 (what if 100 or more Things?)
+      var thisThing = '"Thing_' + hstr + '"';  // JSON requires keys to be in quotes
       var thisValue = arrays[i][h];
       dataObj[thisThing][thisKey] = thisValue;
       console.log("wrote dataObj." + thisThing + "." + thisKey + " = " + thisValue);
@@ -176,11 +178,11 @@ function uploadScrape() {
     url: "https://domscraper.firebaseio.com/datasets/.json",
     method: "POST",
     data: JSON.stringify(JSONobj)
-  }).done(function(o) {  // AJAX returns object {name: newkeyname}
-    console.log("posted new key",o.name);
+  }).done(function(objReceivedFromFB) {  // AJAX returns object {name: newkeyname}
+    console.log("posted new key",objReceivedFromFB.name);
     // spawn a new tab or window that displays, in tabular format, the data you just collected
     // re-initialize globals
-    spawnWindow(o.name);
+    spawnWindow(objReceivedFromFB.name);
     arrays = [];
     fields = [];
     $("#numKeysSelected").html("0 keys selected");  // reset key counter
@@ -190,10 +192,16 @@ function uploadScrape() {
 
 function augmentCSS() {
   // this allows our CSS definitions to be used on the web page we're scraping
-  $("head").append('<style type="text/css">#popUp {border: 2px solid black; background-color: #F70; } #popUp ul {margin: 0; padding: 0; } .popUpItem {margin: 0; padding: 0 0 0 5px; } .popUpItem:hover {background-color: blue; color: white; } .highlighted {background-color: #3CE; }</style>');
+  $("head").append('<style type="text/css"> #popUp {border: 2px solid black; background-color: #F90; } #popUp ul {margin: 0; padding: 0; } .popUpItem {margin: 0; padding: 0 0 0 5px; } .popUpItem:hover {background-color: blue; color: white; } .highlighted {background-color: #3CE; } #popCtrlWin {border: 2px solid black; background-color: #FFEBDE; width: 120px; }</style>');
 }
 
 function spawnWindow(firebaseKey) {
-  document.cookie =  "firebaseKey=" + firebaseKey;
+  $.ajax({
+    url: "https://domscraper.firebaseio.com/cheatKey.json",
+    method: "PATCH",
+    data: JSON.stringify({fbKey: firebaseKey})
+  }).done(function(response) {
+    console.log("PUT ",response);
+  });
   window.open("http://localhost:8080/showResults.html").focus();
 }
