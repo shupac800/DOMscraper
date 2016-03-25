@@ -72,41 +72,23 @@ function mapTree() {
   $("body").attr("dom_id","0");  // label top node of tree with id "0"
   var todolist = [$("body")];
   while (todolist.length > 0) {  // while the todo list has something in it
-    var w = todolist.shift();  // get first element in todo list
+    var el = todolist.shift();  // get first element in todo list
     //console.log("todolist length",todolist.length); // you can watch it grow, then shrink to 0 length
-    var chlist = $(w).children();
-    for (var i = 0; i < chlist.length; i++) {
-      var newid = writeDOMid($(chlist[i]), $(w).attr("dom_id"), i);
-/*      var xyz = $("[dom_id='" + newid + "']");
-      if ($(xyz).text() !== "")  {
-        $(xyz).html($(xyz).html() + "       " + newid);
-      }*/
-      // ^^^ problem:  containers test positive for innerHTML/text if they contain tags that have innerHTML/text
-      // ...would prefer that container test negative if it has no innerHTML directly associated with container tag
-      todolist.push(chlist[i]);  // add child to end of todo list
+    var chlist = $(el).children();
+    for (var i = 0; i < chlist.length; i++) {  // loop through child elements of this element
+      var newid = writeDOMid( $(chlist[i]), $(el).attr("dom_id"), i );
+      var child_el = $("[dom_id='" + newid + "']");
+      if ( classifyNode(child_el) === "V" )  {
+        $(child_el).html($(child_el).html() + "......" + newid);    // label V nodes in the DOM with their dom_ids
+        $(child_el).attr("dom_node_type","V");
+      } else {
+        $(child_el).attr("dom_node_type","O");
+      }
+
+      todolist.push(child_el);  // add child element to end of todo list
     }
   } 
 }
-
-/*
-consider:
-<div id="0.0">
-  <p id="0.0.0"> UBBG </p>
-</div>
-
-innerHTML of id="0.0" is UBBG
-innerHTML of id="0.0.0" is UBBG
-
-if innerHTML of child = innerHTML of parent, then we know parent has no innerHTML of its own
-
-<div id="0.0"> FMITA
-  <p id="0.0.0"> UBBG </p>
-</div>
-
-innerHTML of 
-
-
-*/
 
   function writeDOMid(node,parentID,index) {
     var newid = parentID + "." + index;
@@ -131,17 +113,17 @@ function classifyNode(node) {
   // if node has no text items where nodeValue of that text is not whitespace-only,
   // that node is type O
 
-  var nodeContents = $(node).contents();
-  for (var i = 0; i < nodeContents.length; i++) {
-    var thisNode = nodeContents[i];
-    var thisNodeType = thisNode.nodeType;
-    // is this a text node?
-    if (thisNodeType === 3) {
-      if (thisNode.nodeValue.replace(/(\r\n|\n|\r|\s|\t)/gm,"").length === 0) {
-        // if text node is whitespace-only, move on to next node
+  var subnodes = $(node).contents();
+  for (var i = 0; i < subnodes.length; i++) {
+    var thisSubnode = subnodes[i];
+    // is this subnode a text node?
+    if (thisSubnode.nodeType === 3) {
+      // whitespace-only?
+      if (thisSubnode.nodeValue.replace(/(\r\n|\n|\r|\s|\t)/gm,"").length === 0) {
+        // this text subnode is whitespace-only; move on to next node
         continue;
       } else {
-        // this node has its own text, and is therefore a V node
+        // node has its own text, and is therefore a V node
         return "V";
       }
     }
