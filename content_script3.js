@@ -54,16 +54,18 @@ function main() {
       clist.forEach( (thisClass,idx) => {
         classStr += "." + thisClass;
       });
-      var z = `${tag}${classStr}:nth-child(${index + 1})`;
-
-      selectorAction(z, (el) => { $(el).addClass("highlighted"); } );
+      //var z = `${tag}${classStr}:nth-child(${index + 1})`;
+      //selectorAction(z, (el) => { $(el).addClass("highlighted"); } );
+      $(e.target).addClass("highlighted"); // *******temp
 
       //popUp(e,z);
       console.log("you clicked on dom_id",$(e.target).attr("dom_id"));
-      console.log("it is type ",classifyNode(e.target));
+      console.log("it is type",classifyNode(e.target));
       // find origin node of this net
-      // algorithm?
-
+      var originNode = getOriginNode(e.target);
+      console.log("origin node is", $(originNode).attr("dom_id"));
+      writeOriginClass(originNode);
+      getAllAttributesInNet(originNode);
     });
   }
 }
@@ -73,7 +75,6 @@ function mapTree() {
   var todolist = [$("body")];
   while (todolist.length > 0) {  // while the todo list has something in it
     var el = todolist.shift();  // get first element in todo list
-    //console.log("todolist length",todolist.length); // you can watch it grow, then shrink to 0 length
     var chlist = $(el).children();
     for (var i = 0; i < chlist.length; i++) {  // loop through child elements of this element
       var newid = writeDOMid( $(chlist[i]), $(el).attr("dom_id"), i );
@@ -90,15 +91,73 @@ function mapTree() {
   } 
 }
 
-  function writeDOMid(node,parentID,index) {
-    var newid = parentID + "." + index;
-    $(node).attr('dom_id', newid);
-    return newid;
-  }
+function writeDOMid(node,parentID,index) {
+  var newid = parentID + "_" + index;
+  $(node).attr('dom_id', newid);
+  return newid;
+}
 
-  function findOriginNodeForThingNet() {
+function writeOriginClass(originNode) {
+  console.log("pooking", $(originNode).attr("dom_id"));
+  var originID = $(originNode).attr("dom_id");
+  // label origin node and all descendants with class
+  $(originNode).addClass("origin-" + originID);
+  $(originNode).find("*").each(function(x) {
+    $(this).addClass("origin-" + originID);
+  });
+}
 
+function getAllNodesInNet(originNode) {
+  var originID = $(originNode).attr("dom_id");
+  console.log("chooking",originID);
+  return $(".origin-0_0_0_0");
+}
+
+function getAllAttributesInNet(originNode) {
+  var originID = $(originNode).attr("dom_id");
+  //var nodesInNet = getAllNodesInNet(originNode);
+  var nodesInNet = $(".origin-0_0_0_0");
+  console.log("nodesInNet",nodesInNet);
+  var attrArray = [];
+  $(nodesInNet).each(function(x) {
+    var namedNodeMap = this.attributes; // NNL is an object
+    console.log("NNM",namedNodeMap);
+    Object.keys(namedNodeMap).forEach(function(i, key) {
+      console.log("found attribute",namedNodeMap[key].name + "=" + namedNodeMap[key].value);
+      attrArray.push({attr: namedNodeMap[key].name, value: namedNodeMap[key].value});
+    });
+  });
+  console.log("returning attrArray",attrArray);
+  return attrArray;
+}
+
+
+function getOriginNode(nodeUnderTest) {
+  console.clear();
+
+  var nodeID = $(nodeUnderTest).attr("dom_id");
+  console.log("getting origin node for",nodeID);
+  var plist = $(nodeUnderTest).parents().filter(function(thisParent) {
+    // does thisParent have attribute dom_node_type?
+    var attr = $(this).attr("dom_id");
+    return (typeof attr !== typeof undefined);  // filter out parent nodes outside the body tree:  html, document
+  });
+  var ghi = [];
+  for (var i = 0; i < plist.length; i++) {
+    ghi.push(plist[i]);  // transform HTML collection of parents into array of parents
   }
+  ghi.unshift(nodeUnderTest);  // add the node under test to the beginning of the test array
+  // test each node in array ghi to see if it is the origin node
+  // origin node is first that has parent with 2 or more V-paths (Multiple V Paths)
+  var mvp = ghi.filter(function(ghi_el) {
+    //console.log("ghi_el.parent() is",$(ghi_el).parent());
+    var jkl = $(ghi_el).parent().find("[dom_node_type='V']");
+    //console.log("jkl array is",jkl);
+    //console.log("V-paths: ",jkl.length);
+    return jkl.length > 1;
+  })
+  return mvp[0];  // last entry in mvp array will be the candidate highest in the tree
+}
 
 function selectorAction(selector,fn) {
   $(selector).each( function(idx,element) { fn(element); } );
