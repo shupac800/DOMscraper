@@ -19,6 +19,7 @@ function main() {
       e.preventDefault();  // redundant of stopPropagation?
       e.stopPropagation();
 
+      // this tag,clist stuff is all going to go bye-bye
       var tag = e.target.tagName;
       var clist = e.target.classList;
       var index = $(e.target).index();
@@ -31,13 +32,11 @@ function main() {
       $(e.target).addClass("highlighted"); // *******temp
 
       //popUp(e,z);
-      console.log("you clicked on dom_id",$(e.target).attr("dom_id"));
-      console.log("it is type",classifyNode(e.target));
-      // find origin node of this net
-      var originNode = getOriginNode(e.target);
-      console.log("origin node is", $(originNode).attr("dom_id"));
-      writeOriginClass(originNode);
-      getAllAttributesInNet(originNode);
+      //console.log("you clicked on dom_id",$(e.target).attr("dom_id"));
+      //console.log("it is type",classifyNode(e.target));
+      var originNode = getOriginNode(e.target);  // find origin node of this net
+      writeOriginClass(originNode);  // augment all nodes in net with class "origin-xxx"
+      var attrArray = getAllAttributesInNet(originNode);  // load attrArray with all attributes in this net
     });
   }
 }
@@ -54,12 +53,12 @@ function mapTree() {
       var child_el = $("[dom_id='" + newid + "']");
       if ( classifyNode(child_el) === "V" )  {
         $(child_el).html($(child_el).html() + "......" + newid);    // label V nodes in the DOM with their dom_ids
-        $(child_el).attr("dom_node_type","V");
+        $(child_el).attr("dom_node_type","V");  // write dom_node_type attribute
       } else {
-        $(child_el).attr("dom_node_type","O");
+        $(child_el).attr("dom_node_type","O");  // write dom_node_type attribute
       }
 
-      todolist.push(child_el);  // add child element to end of todo list
+      todolist.push(child_el);  // add this child element to end of todo list
     }
   } 
 }
@@ -127,9 +126,9 @@ function getOriginNode(nodeUnderTest) {
     var jkl = $(ghi_el).parent().find("[dom_node_type='V']");
     //console.log("jkl array is",jkl);
     //console.log("V-paths: ",jkl.length);
-    return jkl.length > 1;
-  })
-  return mvp[0];  // last entry in mvp array will be the candidate highest in the tree
+    return jkl.length > 1;  // include this node if it has 2 or more V-paths
+  });
+  return mvp[0];  // first entry in mvp array will be the origin node
 }
 
 
