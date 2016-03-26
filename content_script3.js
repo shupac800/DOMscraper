@@ -2,13 +2,30 @@
 
 console.clear();
 console.log("running");
+writeDOMNodeType();
 mapTree();
-main();
+//disableListeners();
+//main();
 //test();
 
 
 function test() {
   
+}
+
+function disableListeners() {
+  // clone all elements; listeners won't be recreated when clone tag is written
+  // start with first thing after <body> tag
+  //var b = document.querySelector("body").getElementsByTagName("*");
+  var b = $("[dom_node_type='V']");
+  for (var i = 0; i < b.length; i++) {
+    var elClone = b[i].cloneNode(true);
+    b[i].parentNode.replaceChild(elClone, b[i]);  // can't commit suicide, but can commit infanticide
+  }
+
+  //$("*").unbind("click");
+  console.log("finished");  // takes a long time on Google News
+
 }
 
 
@@ -41,6 +58,20 @@ function main() {
   }
 }
 
+function writeDOMNodeType() {
+  var i = 0;
+  $("body").find("*:not(iframe)").each(function(x) {
+    //console.log(this);
+    classifyNode(this);
+    if ( classifyNode(this) === "V" )  {
+      $(this).attr("dom_node_type","V");  // write dom_node_type attribute
+    } else {
+      $(this).attr("dom_node_type","O");  // write dom_node_type attribute
+    }
+  });
+  console.log("wrote DOM Node Type for everything");
+}
+
 
 function mapTree() {
   $("body").attr("dom_id","0");  // label top node of tree with dom_id "0"
@@ -48,19 +79,20 @@ function mapTree() {
   while (todolist.length > 0) {  // while the todo list has something in it
     var el = todolist.shift();  // get first element in todo list
     var chlist = $(el).children();
+    var parentID = $(el).attr("dom_id");
     for (var i = 0; i < chlist.length; i++) {  // loop through child elements of this element
-      var newid = writeDOMid( $(chlist[i]), $(el).attr("dom_id"), i );
-      var child_el = $("[dom_id='" + newid + "']");
-      if ( classifyNode(child_el) === "V" )  {
-        $(child_el).html($(child_el).html() + "......" + newid);    // label V nodes in the DOM with their dom_ids
-        $(child_el).attr("dom_node_type","V");  // write dom_node_type attribute
-      } else {
-        $(child_el).attr("dom_node_type","O");  // write dom_node_type attribute
+      var newid = writeDOMid( $(chlist[i]), parentID, i );
+      // var child_el = $("[dom_id='" + newid + "']");
+      // if ( $(child_el).attr("dom_node_type") === "V" )  {
+      //   $(child_el).html($(child_el).html() + "......" + newid);  // label V nodes in the DOM with their dom_ids
+      // }
+      if ( $(chlist[i]).attr("dom_node_type") === "V") {
+        $(chlist[i]).html($(chlist[i]).html() + "......" + newid);  // label V nodes in the DOM with their dom_ids
       }
-
-      todolist.push(child_el);  // add this child element to end of todo list
+      todolist.push(chlist[i]);  // add this child element to end of todo list
     }
-  } 
+  }
+  console.log("finished mapTree");
 }
 
 

@@ -15,6 +15,15 @@ chrome.browserAction.onClicked.addListener(function(tab) {
   );
 });
 
+// from http://stackoverflow.com/questions/22544277/chrome-extension-uncaught-referenceerror-is-not-defined
+// chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab){
+//     if(changeInfo && changeInfo.status == "complete"){
+//         chrome.tabs.executeScript(tabId, {file: "bower_components/jquery/dist/jquery.min.js"}, function(){
+//             chrome.tabs.executeScript(tabId, {file: "script.js"});
+//         });
+//     }
+// });
+
 // chrome.tabs.executeScript(null, { file: "bower_components/jquery/dist/jquery.min.js" }, function() {
 //     chrome.tabs.executeScript(null, { file: "content.js" });
 // });
