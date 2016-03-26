@@ -1,44 +1,16 @@
 "use strict";
 
-//$(document).ready(function(){  // what does document.ready() really do here?
-  console.clear();
-  console.log("running");
-  mapTree();
-  //labelOriginNodes();
-  main();
-  //test();
+console.clear();
+console.log("running");
+mapTree();
+main();
+//test();
 
-  function test() {
-   //console.log ("text of 0.0.0", $("[dom_id='0.0.0'").text() );
-   console.log ("contents of 0.0.0", $("[dom_id='0.0.0']").contents());
-  }
 
-  function labelOriginNodes() {
-    var t = $("[dom_id]");
-    var nodeArray = [];
-    for (var i = 0; i < t.length; i++) {
-      var thisDOMid = $(t[i]).attr("dom_id");
-      console.log("saw node ",thisDOMid);
-      console.log("node type integer is ",t[i].nodeType); // always 1
-      console.log(t[i].innerHTML == "" ? "this is an O node" : "this is a V node");
-      nodeArray.push($(t[i]).attr("dom_id"));
-      // origin node has 2 tests:
-      // 1.  it has only one O child
-      // 2.  its parent has 2 or more O children
-      // O node is defined as an invisible non-attribute node, generally, a tag
+function test() {
+  
+}
 
-      // is this node an O node?
-      // problem is, to determine if something is an O node,
-      // we have to know both whether its parent is an O node
-      // and whether its children are O nodes
-      // circular!
-      // have to define O node parametrically
-
-      ////////////console.log("nodeArray",nodeArray);
-      // work backwards from end of nodeArray
-
-    }
-  }
 
 function main() {
   var q = document.getElementsByTagName("*");
@@ -70,8 +42,9 @@ function main() {
   }
 }
 
+
 function mapTree() {
-  $("body").attr("dom_id","0");  // label top node of tree with id "0"
+  $("body").attr("dom_id","0");  // label top node of tree with dom_id "0"
   var todolist = [$("body")];
   while (todolist.length > 0) {  // while the todo list has something in it
     var el = todolist.shift();  // get first element in todo list
@@ -91,14 +64,15 @@ function mapTree() {
   } 
 }
 
+
 function writeDOMid(node,parentID,index) {
   var newid = parentID + "_" + index;
   $(node).attr('dom_id', newid);
   return newid;
 }
 
+
 function writeOriginClass(originNode) {
-  console.log("pooking", $(originNode).attr("dom_id"));
   var originID = $(originNode).attr("dom_id");
   // label origin node and all descendants with class
   $(originNode).addClass("origin-" + originID);
@@ -107,28 +81,27 @@ function writeOriginClass(originNode) {
   });
 }
 
-function getAllNodesInNet(originNode) {
-  var originID = $(originNode).attr("dom_id");
-  console.log("chooking",originID);
-  return $(".origin-0_0_0_0");
+
+function getAllNodesInNet(originID) {
+  return $(".origin-" + originID);
 }
+
 
 function getAllAttributesInNet(originNode) {
   var originID = $(originNode).attr("dom_id");
-  //var nodesInNet = getAllNodesInNet(originNode);
-  var nodesInNet = $(".origin-0_0_0_0");
-  console.log("nodesInNet",nodesInNet);
+  var nodesInNet = getAllNodesInNet(originID);
+  //console.log("nodesInNet",nodesInNet);
   var attrArray = [];
   $(nodesInNet).each(function(x) {
-    var namedNodeMap = this.attributes; // NNL is an object
+    var namedNodeMap = this.attributes; // NNM is an object
     console.log("NNM",namedNodeMap);
     Object.keys(namedNodeMap).forEach(function(i, key) {
-      console.log("found attribute",namedNodeMap[key].name + "=" + namedNodeMap[key].value);
-      attrArray.push({attr: namedNodeMap[key].name, value: namedNodeMap[key].value});
+      //console.log("found attribute",namedNodeMap[key].name + "=" + namedNodeMap[key].value);
+      attrArray.push( {attr: namedNodeMap[key].name, value: namedNodeMap[key].value} );
     });
   });
   console.log("returning attrArray",attrArray);
-  return attrArray;
+  return attrArray;  // attrArray is array of {attrName:attrValue} objects
 }
 
 
@@ -159,9 +132,11 @@ function getOriginNode(nodeUnderTest) {
   return mvp[0];  // last entry in mvp array will be the candidate highest in the tree
 }
 
+
 function selectorAction(selector,fn) {
   $(selector).each( function(idx,element) { fn(element); } );
 }
+
 
 function classifyNode(node) {
   // determine whether a nodeType=1 node (element) is type O or V
