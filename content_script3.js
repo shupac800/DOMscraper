@@ -6,6 +6,8 @@ writeDOMNodeType();
 mapTree();
 disableListeners();
 activateListeners();
+augmentCSS();  // do we need this?
+popControlWin();
 //main();
 //test();
 
@@ -15,30 +17,50 @@ function test() {
 }
 
 function disableListeners() {
+
+  // remove element attributes that take action upon click
+  var q = document.getElementsByTagName("*");
+  for (var i = 0; i < q.length; i++) {
+    var attributes = q[i].attributes;
+    var j = attributes.length;
+    while(j--){
+      if
+         (
+          // (attributes[j].name === "href") ||
+         (attributes[j].name === "onclick") ||
+         (attributes[j].name === "ng-click") ||  // better just remove ng- everything?
+         (attributes[j].name === "ng-href") ||
+         (attributes[j].name === "onmousedown" ))
+      {
+        q[i].removeAttributeNode(attributes[j]);
+      }
+    }
+  }
+
+  // clone all elements; listeners won't be recreated when clone tag is written
+  // start with first thing after <body> tag
+  //var b = document.querySelector("body").getElementsByTagName("*");  // slow!
+  var b = $("[dom_node_type='V']");  // just visible elements
+  for (var i = 0; i < b.length; i++) {
+    var elClone = b[i].cloneNode(true);
+    b[i].parentNode.replaceChild(elClone, b[i]);  // can't commit suicide, but can commit infanticide
+  }
+
   // disable all buttons and links
   $("a").css("cursor","arrow").click(false);  // maybe this belongs on all elements, not just A?
   $("img").css("cursor","arrow").click(false);  // successfully disables clicks on cars.com car images
   $(":input").prop("disabled",true);
-/*
-  // clone all elements; listeners won't be recreated when clone tag is written
-  // start with first thing after <body> tag
-  var b = document.querySelector("body").getElementsByTagName("*");
-  //var b = $("[dom_node_type='V']");  // just visible elements?
-  for (var i = 0; i < b.length; i++) {
-    var elClone = b[i].cloneNode(true);
-    b[i].parentNode.replaceChild(elClone, b[i]);  // can't commit suicide, but can commit infanticide
-  }*/
 
   //$("*").unbind("click");
 
   console.log("finished disableListeners");
-
 }
 
 
 function activateListeners() {
-  //var q = document.getElementsByTagName("*");
-  var q = $("[dom_node_type='V'");  // attach click listener to all visible elements
+  //var q = document.getElementsByTagName("*");  // attach click listener to all elements
+  var q = $("body *");
+  //var q = $("[dom_node_type='V'");  // attach click listener to all visible elements (misses some on cars.com)
   for (var i = 0; i < q.length; i++) {
     $(q[i]).on("click",actionOnClick);
   }
@@ -60,14 +82,12 @@ function actionOnClick(e) {
   });
   var z = `${tag}${classStr}:nth-child(${index + 1})`;
   selectorAction(z, (el) => { $(el).addClass("highlighted"); } );
-  $(e.target).addClass("highlighted"); // *******temp
+  $(e.target).addClass("highlighted");
 
-  console.log("you clicked on dom_id",$(e.target).attr("dom_id"));
-  console.log("it is type",classifyNode(e.target));
+  //console.log("you clicked on dom_id",$(e.target).attr("dom_id"));
+  //console.log("it is type",classifyNode(e.target));
 
-  var originNode = getOriginNode(e.target);  // find origin node of this net
-  writeOriginClass(originNode);  // augment all nodes in net with class "origin-xxx"
-  //var attrArray = getAllAttributesInNet(originNode);  // load attrArray with all attributes in this net
+  writeOriginAttrForNet(getOriginNode(e.target));  // augment all nodes in this net with attr "origin-node"
 
   popUp(e,z);
 
@@ -116,19 +136,27 @@ function writeDOMid(node,parentID,index) {
 }
 
 
-function writeOriginClass(originNode) {
+function writeOriginAttrForNet(originNode) {
   var originID = $(originNode).attr("dom_id");
-  // label origin node and all descendants with class
-  $(originNode).addClass("origin-" + originID);
+  $(originNode).attr("origin-node",originID);
   $(originNode).find("*").each(function(x) {
-    $(this).addClass("origin-" + originID);
+    $(this).attr("origin-node",originID);
   });
 }
 
 
 function buildPopUpMenu(clickedEl) {
   var attrArray = getAllAttributesInNet(getOriginNode(clickedEl));
-  var menuString = "<ul style='list-style-type:none'><li class='popUpItem'>text: " + $(clickedEl).html() + "</li>";
+  // filter out attributes we don't care about
+  attrArray = attrArray.filter( (thisAttr) => {
+    return ( thisAttr.attr !== "class" &&
+             thisAttr.attr !== "id" &&
+             thisAttr.attr !== "dom_id" &&
+             thisAttr.attr !== "dom_node_type" &&
+             thisAttr.attr !== "origin-node" &&
+             thisAttr.attr !== "rel" );   // or it starts with ng-
+  });
+  var menuString = "<ul style='list-style-type:none'><li class='popUpItem'>text: " + $(clickedEl).text() + "</li>";
   for (var i = 0; i < attrArray.length; i++) {
     menuString += "<li class='popUpItem'>" + attrArray[i].attr + ": " + attrArray[i].value + "</li>";
   }
@@ -138,27 +166,21 @@ function buildPopUpMenu(clickedEl) {
 
 function getAllAttributesInNet(originNode) {
   var originID = $(originNode).attr("dom_id");
-  var nodesInNet = $(".origin-" + originID);
-  //console.log("nodesInNet",nodesInNet);
+  var nodesInNet = $("[origin-node='" + originID + "']");
   var attrArray = [];
   $(nodesInNet).each(function(x) {
     var namedNodeMap = this.attributes; // NNM is an object
-    //console.log("NNM",namedNodeMap);
     Object.keys(namedNodeMap).forEach(function(i, key) {
-      //console.log("found attribute",namedNodeMap[key].name + "=" + namedNodeMap[key].value);
       attrArray.push( {attr: namedNodeMap[key].name, value: namedNodeMap[key].value} );
     });
   });
-  //console.log("returning attrArray",attrArray);
   return attrArray;  // attrArray is array of {attr:value} objects
 }
 
 
 function getOriginNode(nodeUnderTest) {
   console.clear();
-
   var nodeID = $(nodeUnderTest).attr("dom_id");
-  console.log("getting origin node for",nodeID);
   var plist = $(nodeUnderTest).parents().filter(function(thisParent) {
     // does thisParent have attribute dom_node_type?
     var attr = $(this).attr("dom_id");
@@ -178,7 +200,6 @@ function getOriginNode(nodeUnderTest) {
     //console.log("V-paths: ",jkl.length);
     return jkl.length > 1;  // include this node if it has 2 or more V-paths
   });
-  console.log("i figger the origin node is ",mvp[0]);
   return mvp[0];  // first entry in mvp array will be the origin node
 }
 
@@ -220,45 +241,58 @@ function popUp(e,z) {
   console.log("sending buildPopUpMenu", e.target);
   var menuHTML = buildPopUpMenu(e.target);
   $("#popUp").html(menuHTML);
-  //$("#popUp").html("fuck<br>dick<br>ass");
-  return;
 
   // add listener to close #popUp if mouse moves out of it
   $("#popUp").on("mouseleave", () => { killPopUp(e); });
 
   // add listener to each attribute displayed
   $("#popUp li").each( (idx,item) => {
-    $(item).click( (e) => {
-      console.log("clicked on index "+idx+", item: ",$(item).html());
-      var scrapeValues = [];
-      var nodeMapKey = idx - 1;
-      if (idx === 0) {  // clicked on the first item in the pop-up menu, which is always "text"
-        $(z).each( (i,el) => {
-          scrapeValues.push($(el).html());
-        });
-        console.log("added " + scrapeValues.length + " values to scrapeValues");
-      } else {         // clicked on item other than first one, meaning, an attribute
-        $(z).each( (i,el) => {
-          // note similary to parseAttributes -- DRY this up
-          var namedNodeMap = el.attributes;  // .attributes returns an object with keys "0", "1", "2", ...
-          var keys = Object.keys(el.attributes);
-          console.log(namedNodeMap[keys[nodeMapKey]].name + ": " + namedNodeMap[keys[nodeMapKey]].value);
-          scrapeValues.push(namedNodeMap[keys[nodeMapKey]].value);
-        });
-      }
-      // update popCtrlWin with new no. of keys tracked
-      // ******** UPGRADE: have user enter a key name for this set of values **********
-      var numKeysSelected = $("#numKeysSelected").html().split(" ")[0];
-      numKeysSelected++;
-      $("#numKeysSelected").text(numKeysSelected + " keys selected");
-      console.log("outputting array",scrapeValues);
-      arrays.push(scrapeValues);  // "arrays" becomes array of arrays
-      fields.push("Key_" + arrays.length);
-      console.log("fields:",fields);
-      console.log("arrays:",arrays);
-      return false;  // critical!
-    });
+    $(item).on( "click", function() { actionOnMenuItemClick(e,z,idx) } );
   });
+}
+
+function actionOnMenuItemClick(e,z,idx) {
+  var scrapeValues = [];
+  var nodeMapKey = idx - 1;
+
+  return;
+  // from here, things get dicey
+  // because of z selector
+  // we run into missing values problem
+  // that is, we get an error if an element in the cursor doesn't have the attribute/menuitem 
+  // that was selected from the popup menuu
+ 
+  if (idx === 0) {  // clicked on the first item in the pop-up menu, which is always "text"
+    $(z).each( (i,el) => {
+      scrapeValues.push($(el).html());
+    });
+    console.log("added " + scrapeValues.length + " values to scrapeValues");
+  } else {         // clicked on item other than first one, meaning, an attribute
+    $(z).each( (i,el) => {
+      // note similary to parseAttributes -- DRY this up
+      var namedNodeMap = el.attributes;  // .attributes returns an object with keys "0", "1", "2", ...
+      var keys = Object.keys(el.attributes);
+      console.log(namedNodeMap[keys[nodeMapKey]].name + ": " + namedNodeMap[keys[nodeMapKey]].value);
+      scrapeValues.push(namedNodeMap[keys[nodeMapKey]].value);
+    });
+  }
+
+  // update popCtrlWin with new no. of keys tracked
+  // ******** UPGRADE: have user enter a key name for this set of values **********
+  var numKeysSelected = $("#numKeysSelected").html().split(" ")[0];
+  numKeysSelected++;
+  $("#numKeysSelected").text(numKeysSelected + " keys selected");
+
+/*  // output scrapeValues array to global arrays
+  console.log("outputting array",scrapeValues);
+  arrays.push(scrapeValues);  // "arrays" becomes array of arrays
+  fields.push("Key_" + arrays.length);
+  console.log("fields:",fields);
+  console.log("arrays:",arrays);*/
+
+  console.log("scrapeValues array",scrapeValues);
+
+  return false;  // critical!
 }
 
 
@@ -279,12 +313,7 @@ function selectorAction(selector,fn) {
 }
 
 
-function parseAttributes(el) {
-  var namedNodeMap = el.attributes;  // .attributes returns an object with keys "0", "1", "2", ...
-  var keys = Object.keys(el.attributes);
-  var menuString = "<ul style='list-style-type:none'><li class='popUpItem'>text: " + $(el).html() + "</li>";
-  for (var i = 0; i < keys.length; i++) {
-    menuString += "<li class='popUpItem'>" + namedNodeMap[keys[i]].name + ": " + namedNodeMap[keys[i]].value + "</li>";
-  }
-  return menuString + "</ul>";
+function augmentCSS() {
+  // this allows our CSS definitions to be used on the web page we're scraping
+  $("head").append('<style type="text/css"> #popUp {border: 2px solid black; background-color: #F90; } #popUp ul {margin: 0; padding: 0; } .popUpItem {margin: 0; padding: 0 0 0 5px; } .popUpItem:hover {background-color: blue; color: white; } .highlighted {background-color: #3CE; } #popCtrlWin {border: 2px solid black; background-color: #FFEBDE; width: 120px; }</style>');
 }
