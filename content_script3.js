@@ -62,13 +62,14 @@ function actionOnClick(e) {
   selectorAction(z, (el) => { $(el).addClass("highlighted"); } );
   $(e.target).addClass("highlighted"); // *******temp
 
-  popUp(e,z);
   console.log("you clicked on dom_id",$(e.target).attr("dom_id"));
   console.log("it is type",classifyNode(e.target));
 
   var originNode = getOriginNode(e.target);  // find origin node of this net
   writeOriginClass(originNode);  // augment all nodes in net with class "origin-xxx"
-  var attrArray = getAllAttributesInNet(originNode);  // load attrArray with all attributes in this net
+  //var attrArray = getAllAttributesInNet(originNode);  // load attrArray with all attributes in this net
+
+  popUp(e,z);
 
   // The return value of an event handler determines whether or not
   // the default browser behavior should take place as well.
@@ -125,26 +126,31 @@ function writeOriginClass(originNode) {
 }
 
 
-function getAllNodesInNet(originID) {
-  return $(".origin-" + originID);
+function buildPopUpMenu(clickedEl) {
+  var attrArray = getAllAttributesInNet(getOriginNode(clickedEl));
+  var menuString = "<ul style='list-style-type:none'><li class='popUpItem'>text: " + $(clickedEl).html() + "</li>";
+  for (var i = 0; i < attrArray.length; i++) {
+    menuString += "<li class='popUpItem'>" + attrArray[i].attr + ": " + attrArray[i].value + "</li>";
+  }
+  return menuString + "</ul>";
 }
 
 
 function getAllAttributesInNet(originNode) {
   var originID = $(originNode).attr("dom_id");
-  var nodesInNet = getAllNodesInNet(originID);
+  var nodesInNet = $(".origin-" + originID);
   //console.log("nodesInNet",nodesInNet);
   var attrArray = [];
   $(nodesInNet).each(function(x) {
     var namedNodeMap = this.attributes; // NNM is an object
-    console.log("NNM",namedNodeMap);
+    //console.log("NNM",namedNodeMap);
     Object.keys(namedNodeMap).forEach(function(i, key) {
       //console.log("found attribute",namedNodeMap[key].name + "=" + namedNodeMap[key].value);
       attrArray.push( {attr: namedNodeMap[key].name, value: namedNodeMap[key].value} );
     });
   });
-  console.log("returning attrArray",attrArray);
-  return attrArray;  // attrArray is array of {attrName:attrValue} objects
+  //console.log("returning attrArray",attrArray);
+  return attrArray;  // attrArray is array of {attr:value} objects
 }
 
 
@@ -172,6 +178,7 @@ function getOriginNode(nodeUnderTest) {
     //console.log("V-paths: ",jkl.length);
     return jkl.length > 1;  // include this node if it has 2 or more V-paths
   });
+  console.log("i figger the origin node is ",mvp[0]);
   return mvp[0];  // first entry in mvp array will be the origin node
 }
 
@@ -208,15 +215,16 @@ function classifyNode(node) {
 }
 
 function popUp(e,z) {
-  var popOrigin = e.target;
-  //console.log("event",e);
-  $("body").append(`<div id='popUp'></div>`);
-  $("#popUp").offset({top:e.pageY, left:e.pageX});  
-  // positioning an element using pageX, pageY or clientX, clientY triggers mouseleave or mouseout -- why??
-  $("#popUp").html(parseAttributes(popOrigin));
+  $("body").append("<div id='popUp'></div>");
+  $("#popUp").offset( {top:e.pageY, left:e.pageX} );
+  console.log("sending buildPopUpMenu", e.target);
+  var menuHTML = buildPopUpMenu(e.target);
+  $("#popUp").html(menuHTML);
+  //$("#popUp").html("fuck<br>dick<br>ass");
+  return;
 
   // add listener to close #popUp if mouse moves out of it
-  $("#popUp").on("mouseleave", () => { killPopUp(popOrigin); });
+  $("#popUp").on("mouseleave", () => { killPopUp(e); });
 
   // add listener to each attribute displayed
   $("#popUp li").each( (idx,item) => {
@@ -274,10 +282,9 @@ function selectorAction(selector,fn) {
 function parseAttributes(el) {
   var namedNodeMap = el.attributes;  // .attributes returns an object with keys "0", "1", "2", ...
   var keys = Object.keys(el.attributes);
-  var i;
-  var string = "<ul style='list-style-type:none'><li class='popUpItem'>text: " + $(el).html() + "</li>";
-  for (i = "0"; i < keys.length; i++) {
-    string += "<li class='popUpItem'>" + namedNodeMap[keys[i]].name + ": " + namedNodeMap[keys[i]].value + "</li>";
+  var menuString = "<ul style='list-style-type:none'><li class='popUpItem'>text: " + $(el).html() + "</li>";
+  for (var i = 0; i < keys.length; i++) {
+    menuString += "<li class='popUpItem'>" + namedNodeMap[keys[i]].name + ": " + namedNodeMap[keys[i]].value + "</li>";
   }
-  return string + "</ul>";
+  return menuString + "</ul>";
 }
