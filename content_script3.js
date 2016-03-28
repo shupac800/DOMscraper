@@ -96,7 +96,6 @@ function actionOnClick(e) {
   // filter out any dom_id's of different length than dom_id of clicked-on element
   console.log("cursor contents",cursor);
   cursor = cursor.filter(function(c) {
-    console.log("pooking",c.dom_id);
     return c.dom_id.split("_").length === cdi_fields.length;
   });
   // filter out any dom_id's that differ from clicked-on element by more than 1 field
@@ -160,7 +159,7 @@ function actionOnClick(e) {
 
   writeOriginAttrForNet(getOriginNode(e.target));  // augment all nodes in this net with attr "origin-node"
 
-  popUp(e,z);
+  popUp(e,cursor);
 
   // The return value of an event handler determines whether or not
   // the default browser behavior should take place as well.
@@ -235,16 +234,6 @@ function writeOriginAttrForNet(originNode) {
 
 function buildPopUpMenu(clickedEl) {
   var attrArray = getAllAttributesInNet(getOriginNode(clickedEl));
-  // filter out attributes we don't care about so they won't clutter up the pop-up menu
-  attrArray = attrArray.filter( (thisAttr) => {
-    return ( thisAttr.attr !== "class" &&
-             thisAttr.attr !== "id" &&
-             thisAttr.attr !== "dom_id" &&
-             thisAttr.attr !== "dom_node_type" &&
-             thisAttr.attr !== "origin-node" &&
-             thisAttr.attr !== "rel" &&
-             thisAttr.attr.slice(0,3) !== "ng-");
-  });
   var menuString = "<ul style='list-style-type:none'><li class='popUpItem'>text: " + $(clickedEl).text() + "</li>";
   for (var i = 0; i < attrArray.length; i++) {
     menuString += "<li class='popUpItem'>" + attrArray[i].attr + ": " + attrArray[i].value + "</li>";
@@ -262,6 +251,16 @@ function getAllAttributesInNet(originNode) {
     Object.keys(namedNodeMap).forEach(function(i, key) {
       attrArray.push( {attr: namedNodeMap[key].name, value: namedNodeMap[key].value} );
     });
+  });
+  // filter out attributes we don't care about so they won't clutter up the pop-up menu
+  attrArray = attrArray.filter( (thisAttr) => {
+    return ( thisAttr.attr !== "class" &&
+             thisAttr.attr !== "id" &&
+             thisAttr.attr !== "dom_id" &&
+             thisAttr.attr !== "dom_node_type" &&
+             thisAttr.attr !== "origin-node" &&
+             thisAttr.attr !== "rel" &&
+             thisAttr.attr.slice(0,3) !== "ng-");
   });
   return attrArray;  // attrArray is array of {attr:value} objects
 }
@@ -323,45 +322,49 @@ function classifyNode(node) {
   return "O";
 }
 
-function popUp(e,z) {
+function popUp(e,cursor) {
   $("body").append("<div id='popUpMenu'></div>");
+  $("popUpMenu").hide();
   $("#popUpMenu").offset( {top:e.pageY, left:e.pageX} );
   console.log("sending buildPopUpMenu", e.target);
   var menuHTML = buildPopUpMenu(e.target);
   $("#popUpMenu").html(menuHTML);
+  $("#popUpMenu").show("fast");
 
   // add listener to close #popUp if mouse moves out of it
   $("#popUpMenu").on("mouseleave", () => { killPopUp(e); });
 
   // add listener to each attribute displayed
   $("#popUpMenu li").each( (idx,item) => {
-    $(item).on( "click", function() { actionOnMenuItemClick(e,z,idx) } );
+    $(item).on( "click", function() { actionOnMenuItemClick(e,cursor,idx) } );
   });
 }
 
-function actionOnMenuItemClick(e,z,idx) {
-  var scrapeValues = [];
+function actionOnMenuItemClick(e,cursor,idx) {
+  var scrape = [];
   var nodeMapKey = idx - 1;
-
-  return;
-  // from here, things get dicey
-  // because of z selector
-  // we run into missing values problem
-  // that is, we get an error if an element in the cursor doesn't have the attribute/menuitem 
-  // that was selected from the popup menuu
  
+  // initialize scrapeValues array with empty objects
+  cursor.forEach( (c,i) => {
+    scrape[i] = {};
+  })
   if (idx === 0) {  // clicked on the first item in the pop-up menu, which is always "text"
-    $(z).each( (i,el) => {
-      scrapeValues.push($(el).html());
+    cursor.forEach( (c,i) => {
+      scrape.name = "text";
+      scrape.color = "yellow";
+      scrape.value = $(c.nodeHTML).text();
     });
-    console.log("added " + scrapeValues.length + " values to scrapeValues");
+    $(".highlighted").removeClass("highlighted").css("background-color",scrape.color);
+    // how to advance highlight color to next in sequence? global?
+    // tied to .length of something -- better
+
   } else {         // clicked on item other than first one, meaning, an attribute
-    $(z).each( (i,el) => {
-      // note similary to parseAttributes -- DRY this up
-      var namedNodeMap = el.attributes;  // .attributes returns an object with keys "0", "1", "2", ...
-      var keys = Object.keys(el.attributes);
-      console.log(namedNodeMap[keys[nodeMapKey]].name + ": " + namedNodeMap[keys[nodeMapKey]].value);
-      scrapeValues.push(namedNodeMap[keys[nodeMapKey]].value);
+    console.log("working on it...");
+    cursor.forEach( (c,i) => {
+      var attrArray = getAllAttributesInNet(getOriginNode($(`[dom_id='${c.dom_id}']`)));  // computation-heavy...
+      scrape.name = attrArray[idx - 1].attr;
+      scrape.color = "chartreuse";
+      scrape.value = attrArray[idx - 1].value;
     });
   }
 
@@ -378,7 +381,7 @@ function actionOnMenuItemClick(e,z,idx) {
   console.log("fields:",fields);
   console.log("arrays:",arrays);*/
 
-  console.log("scrapeValues array",scrapeValues);
+  console.log("scrape array",scrape);
 
   return false;  // critical!
 }
