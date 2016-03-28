@@ -13,7 +13,7 @@ popControlWin();
 
 
 function test() {
-  
+  console.log(window.location.href);
 }
 
 function disableListeners() {
@@ -38,27 +38,29 @@ function disableListeners() {
   }
 
   // clone all elements; listeners won't be recreated when clone tag is written
-  // start with first thing after <body> tag
-  //var b = document.querySelector("body").getElementsByTagName("*");  // slow!
   var b = $("[dom_node_type='V']");  // just visible elements
   for (var i = 0; i < b.length; i++) {
     var elClone = b[i].cloneNode(true);
     b[i].parentNode.replaceChild(elClone, b[i]);  // can't commit suicide, but can commit infanticide
   }
 
+  //remove class ng-binding? other ng-classes?
+
+//maybe change anchor into some other kind of tag?
+// that will screw up css tied to anchor
+
+// problem with cars. com is you still have an anchor tag with an href link
+
   // disable all buttons and links
   $("a").css("cursor","arrow").click(false);  // maybe this belongs on all elements, not just A?
   $("img").css("cursor","arrow").click(false);  // successfully disables clicks on cars.com car images
   $(":input").prop("disabled",true);
-
-  //$("*").unbind("click");
 
   console.log("finished disableListeners");
 }
 
 
 function activateListeners() {
-  //var q = document.getElementsByTagName("*");  // attach click listener to all elements
   var q = $("body *");
   //var q = $("[dom_node_type='V'");  // attach click listener to all visible elements (misses some on cars.com)
   for (var i = 0; i < q.length; i++) {
@@ -79,12 +81,10 @@ function actionOnClick(e) {
   clist.forEach( (thisClass,idx) => {
     classStr += "." + thisClass;
   });
-  var z = `${tag}${classStr}:nth-child(${index + 1})`;
+  var z = `${tag}${classStr}:not(.scrapeignore):nth-child(${index + 1})`;
   var clicked_dom_id = $(e.target).attr("dom_id");
   var cdi_origin_id = $(getOriginNode(e.target)).attr("dom_id");
   var cdi_fields = clicked_dom_id.split("_");
-
-  // can you just change z to select dom_id's that match a certain pattern?
 
   // put all z-cursor items in array
   var cursor = [];
@@ -94,7 +94,9 @@ function actionOnClick(e) {
                    dom_id: $(this).attr("dom_id") } );
   });
   // filter out any dom_id's of different length than dom_id of clicked-on element
+  console.log("cursor contents",cursor);
   cursor = cursor.filter(function(c) {
+    console.log("pooking",c.dom_id);
     return c.dom_id.split("_").length === cdi_fields.length;
   });
   // filter out any dom_id's that differ from clicked-on element by more than 1 field
@@ -123,8 +125,7 @@ function actionOnClick(e) {
   });
   console.log("mismatch_count",mismatch_count);
   // identify which field has the highest mismatch count
-  var highest_mismatch_count = 0;
-  var highest_mismatch_count_field = 0;
+  var highest_mismatch_count = 0, highest_mismatch_count_field = 0;
   for (var j = 0; j < cdi_fields.length; j++) {
     if (mismatch_count[j] > highest_mismatch_count) {
       highest_mismatch_count = mismatch_count[j];
@@ -149,12 +150,10 @@ function actionOnClick(e) {
   });
 
   // now you can loop through the node list in the cursor and do whatever you like
+  // should solve missing value problem
   cursor.forEach(function(c,i) {
     $(c.nodeHTML).addClass("highlighted");
   });
-  return;
-
-
 
   //console.log("you clicked on dom_id",$(e.target).attr("dom_id"));
   //console.log("it is type",classifyNode(e.target));
@@ -190,33 +189,29 @@ function mapTree() {
     var chlist = $(el).children();  // chlist contains immediate children of el
     var parentID = $(el).attr("dom_id");
     for (var i = 0; i < chlist.length; i++) {  // loop through immediate children of this element
-      var newid = writeDOMid( $(chlist[i]), parentID, i );
-      if ( $(chlist[i]).attr("dom_node_type") === "V") {
+      var newid = writeDOMid( chlist[i], parentID, i );
+      if ( $(chlist[i]).attr("dom_node_type") === "V") {  // takes too long -- not for production version
         //$(chlist[i]).html($(chlist[i]).html() + "......" + newid);  // label V nodes in the DOM with their dom_ids
-        $("body").append("<div class='dpop' id='pop-" + newid + "' style='display: none; position: absolute; width: 280px; padding: 10px; background: #eeeeee; color: #000000; border: 1px solid #1a1a1a; font-size: 90%; '>" + newid + "</div>");
-        //$(chlist[i]).html($(chlist[i]).html() + "<div>hi</div>");
-        //$(chlist[i]).html($(chlist[i]).html() + "&&");
-        $("#pop-"+newid).hide();
+        $("body").append("<div class='dpop' id='pop-" + newid + "' style='display: inline-block; position: absolute; padding: 6px; background: #eee; color: #000; border: 2px solid #1a1a1a; font-size: 90%; border-radius: 15px'>" + newid + "</div>");
+        $("#pop-" + newid).hide();
       }
-      //$(chlist[i]).attr("origin-node",getOriginNode(chlist[i]));  // SLOW and totally not working!!
       todolist.push(chlist[i]);  // add this child element to end of todo list
     }
   }
   console.log("finished mapTree");
 }
 
+
 // from http://creativeindividual.co.uk/2011/02/create-a-pop-up-div-in-jquery/
 $(function() {
   $("[dom_node_type='V']").hover(function(e) {
     var s = $(e.target).attr("dom_id");
-    console.log("f");
-    $("#pop-" + s).show()
+    $("#pop-" + s).show("fast")
       .css('top', e.pageY + 10)
       .css('left', e.pageX + 10)
       .appendTo('body');
   }, function(e) {
     var s = $(e.target).attr("dom_id");
-    console.log("h");
     $("#pop-" + s).hide();
   });
 });
@@ -224,7 +219,7 @@ $(function() {
 
 function writeDOMid(node,parentID,index) {
   var newid = parentID + "_" + index;
-  $(node).attr('dom_id', newid);
+  $(node).attr("dom_id", newid);
   return newid;
 }
 
@@ -240,14 +235,15 @@ function writeOriginAttrForNet(originNode) {
 
 function buildPopUpMenu(clickedEl) {
   var attrArray = getAllAttributesInNet(getOriginNode(clickedEl));
-  // filter out attributes we don't care about so they won't show in pop-up menu
+  // filter out attributes we don't care about so they won't clutter up the pop-up menu
   attrArray = attrArray.filter( (thisAttr) => {
     return ( thisAttr.attr !== "class" &&
              thisAttr.attr !== "id" &&
              thisAttr.attr !== "dom_id" &&
              thisAttr.attr !== "dom_node_type" &&
              thisAttr.attr !== "origin-node" &&
-             thisAttr.attr !== "rel" );   // or it starts with ng-
+             thisAttr.attr !== "rel" &&
+             thisAttr.attr.slice(0,3) !== "ng-");
   });
   var menuString = "<ul style='list-style-type:none'><li class='popUpItem'>text: " + $(clickedEl).text() + "</li>";
   for (var i = 0; i < attrArray.length; i++) {
@@ -328,17 +324,17 @@ function classifyNode(node) {
 }
 
 function popUp(e,z) {
-  $("body").append("<div id='popUp'></div>");
-  $("#popUp").offset( {top:e.pageY, left:e.pageX} );
+  $("body").append("<div id='popUpMenu'></div>");
+  $("#popUpMenu").offset( {top:e.pageY, left:e.pageX} );
   console.log("sending buildPopUpMenu", e.target);
   var menuHTML = buildPopUpMenu(e.target);
-  $("#popUp").html(menuHTML);
+  $("#popUpMenu").html(menuHTML);
 
   // add listener to close #popUp if mouse moves out of it
-  $("#popUp").on("mouseleave", () => { killPopUp(e); });
+  $("#popUpMenu").on("mouseleave", () => { killPopUp(e); });
 
   // add listener to each attribute displayed
-  $("#popUp li").each( (idx,item) => {
+  $("#popUpMenu li").each( (idx,item) => {
     $(item).on( "click", function() { actionOnMenuItemClick(e,z,idx) } );
   });
 }
@@ -389,13 +385,13 @@ function actionOnMenuItemClick(e,z,idx) {
 
 
 function popControlWin() {
-  $("body").append("<div id='popCtrlWin'><p>DOMscraper</p><p id='numKeysSelected'>0 keys selected</p><button id='button-upload'>Upload</button></div>");
-  //$("#popCtrlWin").draggable();
+  $("body").append("<div id='popCtrlWin'><p class='scrapeignore'>DOMscraper</p><p class='scrapeignore' id='numKeysSelected'>0 keys selected</p><button id='button-upload'>Upload</button></div>");
+  $("#popCtrlWin").draggable();
 }
 
 
 function killPopUp(popOrigin) {
-  $("#popUp").remove();
+  $("#popUpMenu").remove();
   $(".highlighted").removeClass("highlighted");
 }
 

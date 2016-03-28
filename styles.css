@@ -1,11 +1,11 @@
-#popUp {
+#popUpMenu {
   position:relative;
   z-index: 999;
   border: 2px solid black;
   background-color: #F90;
 }
 
-#popUp ul {
+#popUpMenu ul {
   margin: 0;
   padding: 0;
 }
