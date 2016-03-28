@@ -72,7 +72,6 @@ function actionOnClick(e) {
   e.preventDefault();  // redundant of stopPropagation?
   e.stopPropagation();  // don't bubble event
 
-  // this tag,clist stuff is all going to go bye-bye
   var tag = e.target.tagName;
   var clist = e.target.classList;
   var index = $(e.target).index();
@@ -81,8 +80,61 @@ function actionOnClick(e) {
     classStr += "." + thisClass;
   });
   var z = `${tag}${classStr}:nth-child(${index + 1})`;
-  selectorAction(z, (el) => { $(el).addClass("highlighted"); } );
-  $(e.target).addClass("highlighted");
+  var clicked_dom_id = $(e.target).attr("dom_id");
+  var cdi_origin_id = $(getOriginNode(e.target)).attr("dom_id");
+  var cdi_fields = clicked_dom_id.split("_");
+
+  // can you just change z to select dom_id's that match a certain pattern?
+
+  // put all z-cursor items in array
+  var cursor = [];
+  var mismatch_count = new Array(cdi_fields.length).fill(0); // initialize array with zeroes; note ES6 only
+  $(z).each(function() {
+    cursor.push( { nodeHTML: this,
+                   dom_id: $(this).attr("dom_id") } );
+  });
+  cursor = cursor.filter(function(c) {
+    return c.dom_id.split("_").length === cdi_fields.length;
+  });
+  cursor = cursor.filter(function(c) {
+    var c_fields = c.dom_id.split("_");
+    var matches = 0;
+    for (var k = 0; k < c_fields.length; k++) {
+      if (c_fields[k] === cdi_fields[k]) {
+        matches++;
+      }
+    }
+    return matches >= cdi_fields.length - 1;
+  });
+  cursor.forEach(function(c,i) {
+    //identify the field where the mismatch with the clicked dom_id occurs
+    var cArray = c.dom_id.split("_");
+    for(var j = 0; j < cdi_fields.length; j++) {
+      if (cArray[j] !== cdi_fields[j]) {
+        mismatch_count[j]++;
+      }
+    }
+    c.origin_id = $(getOriginNode(c.nodeHTML)).attr("dom_id");
+  });
+  cursor.forEach(function(thing,i) {
+    console.log(i + ": " + thing.dom_id +  "   " + thing.origin_id);
+  });
+  console.log("mismatch_count",mismatch_count);
+  // identify which field has the highest mismatch count
+  var highest_mismatch_count = 0;
+  var highest_mismatch_count_field = 0;
+  for (var j = 0; j < cdi_fields.length; j++) {
+    if (mismatch_count[j] > highest_mismatch_count) {
+      highest_mismatch_count = mismatch_count[j];
+      highest_mismatch_count_field = j;
+    }
+  }
+  console.log("highest mismatch count is in field", highest_mismatch_count_field);
+  return;
+
+  selectorAction(z, (el) => { $(el).addClass("highlighted");
+                                             console.log($(el).attr("dom_id"));
+                                              } );
 
   //console.log("you clicked on dom_id",$(e.target).attr("dom_id"));
   //console.log("it is type",classifyNode(e.target));
@@ -122,6 +174,7 @@ function mapTree() {
       if ( $(chlist[i]).attr("dom_node_type") === "V") {
         $(chlist[i]).html($(chlist[i]).html() + "......" + newid);  // label V nodes in the DOM with their dom_ids
       }
+      //$(chlist[i]).attr("origin-node",getOriginNode(chlist[i]));  // SLOW and totally not working!!
       todolist.push(chlist[i]);  // add this child element to end of todo list
     }
   }
@@ -147,7 +200,7 @@ function writeOriginAttrForNet(originNode) {
 
 function buildPopUpMenu(clickedEl) {
   var attrArray = getAllAttributesInNet(getOriginNode(clickedEl));
-  // filter out attributes we don't care about
+  // filter out attributes we don't care about so they won't show in pop-up menu
   attrArray = attrArray.filter( (thisAttr) => {
     return ( thisAttr.attr !== "class" &&
              thisAttr.attr !== "id" &&
@@ -179,7 +232,6 @@ function getAllAttributesInNet(originNode) {
 
 
 function getOriginNode(nodeUnderTest) {
-  console.clear();
   var nodeID = $(nodeUnderTest).attr("dom_id");
   var plist = $(nodeUnderTest).parents().filter(function(thisParent) {
     // does thisParent have attribute dom_node_type?
