@@ -93,9 +93,11 @@ function actionOnClick(e) {
     cursor.push( { nodeHTML: this,
                    dom_id: $(this).attr("dom_id") } );
   });
+  // filter out any dom_id's of different length than dom_id of clicked-on element
   cursor = cursor.filter(function(c) {
     return c.dom_id.split("_").length === cdi_fields.length;
   });
+  // filter out any dom_id's that differ from clicked-on element by more than 1 field
   cursor = cursor.filter(function(c) {
     var c_fields = c.dom_id.split("_");
     var matches = 0;
@@ -130,6 +132,25 @@ function actionOnClick(e) {
     }
   }
   console.log("highest mismatch count is in field", highest_mismatch_count_field);
+  // use highest_mismatch_count_field to create match string for cursor
+  var matchString = "0";
+  for (var j = 1; j < cdi_fields.length; j++) {
+    if (j === highest_mismatch_count_field) {
+      matchString += "_.+";  // regex: + means match one or more of the preceding character
+    } else {
+      matchString += "_" + cdi_fields[j];
+    }
+  }
+  console.log("match string is", matchString);
+
+  // toss any items in cursor that don't have a dom_id that matches matchString
+  cursor = cursor.filter(function(c) {
+    console.log(c.dom_id.match(matchString));
+    // if ( !c.dom_id.match(matchString) ) {
+    //   console.log("filtering out ",c.dom_id);
+    // }
+    return c.dom_id.match(matchString);  // evaluates to truthy or falsy
+  });
   return;
 
   selectorAction(z, (el) => { $(el).addClass("highlighted");
