@@ -244,12 +244,13 @@ function buildPopUpMenu(clickedEl) {
 
 function getAllAttributesInNet(originNode) {
   var originID = $(originNode).attr("dom_id");
-  var nodesInNet = $("[origin-node='" + originID + "']");
+  var nodesInNet = $("[origin-node='" + originID + "']"); // undefined except for clicked-on element
   var attrArray = [];
   $(nodesInNet).each(function(x) {
     var namedNodeMap = this.attributes; // NNM is an object
     Object.keys(namedNodeMap).forEach(function(i, key) {
-      attrArray.push( {attr: namedNodeMap[key].name, value: namedNodeMap[key].value} );
+      attrArray.push( { attr: namedNodeMap[key].name,
+                        value: namedNodeMap[key].value } );
     });
   });
   // filter out attributes we don't care about so they won't clutter up the pop-up menu
@@ -347,11 +348,18 @@ function actionOnMenuItemClick(e,cursor,idx) {
   // initialize scrapeValues array with empty objects
   cursor.forEach( (c,i) => {
     scrape[i] = {};
-  })
+  });
+  // get next highlight color
+  var colorArr = ["yellow",
+                  "coral",
+                  "cadetblue",
+                  "chartreuse",
+                  "chocolate"];
+  var colorIndex = $("#numKeysSelected").text().split(" ")[0];  // sloppy but should work
   if (idx === 0) {  // clicked on the first item in the pop-up menu, which is always "text"
     cursor.forEach( (c,i) => {
       scrape.name = "text";
-      scrape.color = "yellow";
+      scrape.color = colorArr[colorIndex];
       scrape.value = $(c.nodeHTML).text();
     });
     $(".highlighted").removeClass("highlighted").css("background-color",scrape.color);
@@ -359,11 +367,18 @@ function actionOnMenuItemClick(e,cursor,idx) {
     // tied to .length of something -- better
 
   } else {         // clicked on item other than first one, meaning, an attribute
+    console.clear();
     console.log("working on it...");
-    cursor.forEach( (c,i) => {
-      var attrArray = getAllAttributesInNet(getOriginNode($(`[dom_id='${c.dom_id}']`)));  // computation-heavy...
+    cursor.forEach(function(c,i) {
+      console.log("cursor row",i);
+      var o = getOriginNode($(`[dom_id='${c.dom_id}']`));
+      writeOriginAttrForNet(o);  // slow slow slow
+      var attrArray = getAllAttributesInNet(o);  // computation-heavy...
+      // menu item index is offset from attrArray index by 1
+      // because menu always has "text" at index 1
+      console.log("attrArray at index "+(idx - 1),attrArray[idx - 1]);
       scrape.name = attrArray[idx - 1].attr;
-      scrape.color = "chartreuse";
+      scrape.color = colorArr[colorIndex];
       scrape.value = attrArray[idx - 1].value;
     });
   }
@@ -373,6 +388,10 @@ function actionOnMenuItemClick(e,cursor,idx) {
   var numKeysSelected = $("#numKeysSelected").html().split(" ")[0];
   numKeysSelected++;
   $("#numKeysSelected").text(numKeysSelected + " keys selected");
+  $("#popCtrlWin")
+    .append("<div><div style='display:inline-block;margin: 10px 10px 0 0;width:15px;height:15px;border:1px solid black;background-color:" + scrape.color + "'></div><p>" + scrape.name + "</p></div>");
+
+  //$("#popCtrlWin").append("<div><div id='colorbox-" + numKeysSelected + "' style='height:20px;width:20px;background-color:" + scrape.color + "></div><p>" + scrape.name + "</p></div>");
 
 /*  // output scrapeValues array to global arrays
   console.log("outputting array",scrapeValues);
