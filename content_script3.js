@@ -145,17 +145,16 @@ function actionOnClick(e) {
 
   // toss any items in cursor that don't have a dom_id that matches matchString
   cursor = cursor.filter(function(c) {
-    console.log(c.dom_id.match(matchString));
-    // if ( !c.dom_id.match(matchString) ) {
-    //   console.log("filtering out ",c.dom_id);
-    // }
-    return c.dom_id.match(matchString);  // evaluates to truthy or falsy
+    return c.dom_id.match(matchString);  // evaluates to null (falsy) if no match
+  });
+
+  // now you can loop through the node list in the cursor and do whatever you like
+  cursor.forEach(function(c,i) {
+    $(c.nodeHTML).addClass("highlighted");
   });
   return;
 
-  selectorAction(z, (el) => { $(el).addClass("highlighted");
-                                             console.log($(el).attr("dom_id"));
-                                              } );
+
 
   //console.log("you clicked on dom_id",$(e.target).attr("dom_id"));
   //console.log("it is type",classifyNode(e.target));
@@ -193,7 +192,11 @@ function mapTree() {
     for (var i = 0; i < chlist.length; i++) {  // loop through immediate children of this element
       var newid = writeDOMid( $(chlist[i]), parentID, i );
       if ( $(chlist[i]).attr("dom_node_type") === "V") {
-        $(chlist[i]).html($(chlist[i]).html() + "......" + newid);  // label V nodes in the DOM with their dom_ids
+        //$(chlist[i]).html($(chlist[i]).html() + "......" + newid);  // label V nodes in the DOM with their dom_ids
+        $("body").append("<div class='dpop' id='pop-" + newid + "' style='display: none; position: absolute; width: 280px; padding: 10px; background: #eeeeee; color: #000000; border: 1px solid #1a1a1a; font-size: 90%; '>" + newid + "</div>");
+        //$(chlist[i]).html($(chlist[i]).html() + "<div>hi</div>");
+        //$(chlist[i]).html($(chlist[i]).html() + "&&");
+        $("#pop-"+newid).hide();
       }
       //$(chlist[i]).attr("origin-node",getOriginNode(chlist[i]));  // SLOW and totally not working!!
       todolist.push(chlist[i]);  // add this child element to end of todo list
@@ -201,6 +204,22 @@ function mapTree() {
   }
   console.log("finished mapTree");
 }
+
+// from http://creativeindividual.co.uk/2011/02/create-a-pop-up-div-in-jquery/
+$(function() {
+  $("[dom_node_type='V']").hover(function(e) {
+    var s = $(e.target).attr("dom_id");
+    console.log("f");
+    $("#pop-" + s).show()
+      .css('top', e.pageY + 10)
+      .css('left', e.pageX + 10)
+      .appendTo('body');
+  }, function(e) {
+    var s = $(e.target).attr("dom_id");
+    console.log("h");
+    $("#pop-" + s).hide();
+  });
+});
 
 
 function writeDOMid(node,parentID,index) {
@@ -378,11 +397,6 @@ function popControlWin() {
 function killPopUp(popOrigin) {
   $("#popUp").remove();
   $(".highlighted").removeClass("highlighted");
-}
-
-
-function selectorAction(selector,fn) {
-  $(selector).each( function(idx,element) { fn(element); } );
 }
 
 
