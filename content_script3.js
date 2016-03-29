@@ -1,5 +1,10 @@
 "use strict";
 
+// globals
+var scrape =  { source: null,
+                time:   null,
+                data:   []    };
+
 console.clear();
 console.log("running");
 writeDOMNodeType();
@@ -342,72 +347,84 @@ function popUp(e,cursor) {
 }
 
 function actionOnMenuItemClick(e,cursor,idx) {
-  var scrape = [];
+  // have to define this listener from within function where scrape is within scope
   var nodeMapKey = idx - 1;
- 
-  // initialize scrapeValues array with empty objects
-  cursor.forEach( (c,i) => {
-    scrape[i] = {};
-  });
+
   // get next highlight color
   var colorArr = ["yellow",
                   "coral",
-                  "cadetblue",
+                  "greenyellow",
                   "chartreuse",
+                  "gold",
+                  "hotpink",
+                  "darkorange",
                   "chocolate"];
-  var colorIndex = $("#numKeysSelected").text().split(" ")[0];  // sloppy but should work
-  if (idx === 0) {  // clicked on the first item in the pop-up menu, which is always "text"
-    cursor.forEach( (c,i) => {
-      scrape.name = "text";
-      scrape.color = colorArr[colorIndex];
-      scrape.value = $(c.nodeHTML).text();
-    });
-    $(".highlighted").removeClass("highlighted").css("background-color",scrape.color);
-    // how to advance highlight color to next in sequence? global?
-    // tied to .length of something -- better
+  var numKeys = $("#numKeysSelected").text().split(" ")[0]  // number of keys scraped so far
+  var colorIndex = numKeys % colorArr.length;
 
+  // initialize next level of scrape object
+  cursor.forEach( (c,i) => {
+    scrape.data[numKeys] = {  keyname:   null,
+                              color:     colorArr[colorIndex],
+                              values:    []                      };
+  });
+
+  if (idx === 0) {  // clicked on the first item in the pop-up menu, which is always "text"
+    scrape.data[numKeys].keyname = "text";
+    for (var i = 0; i < cursor.length; i++) {
+      scrape.data[numKeys].values[i] = $(cursor[i].nodeHTML).text();
+    }
+    $(".highlighted").removeClass("highlighted").css("background-color",colorArr[colorIndex]);
   } else {         // clicked on item other than first one, meaning, an attribute
     console.clear();
     console.log("working on it...");
-    cursor.forEach(function(c,i) {
+    for (var i = 0; i < cursor.length; i++) {
       console.log("cursor row",i);
-      var o = getOriginNode($(`[dom_id='${c.dom_id}']`));
+      var o = getOriginNode($(`[dom_id='${cursor[i].dom_id}']`));
       writeOriginAttrForNet(o);  // slow slow slow
       var attrArray = getAllAttributesInNet(o);  // computation-heavy...
+      scrape.data[numKeys].keyname = attrArray[0].attr;  // will get written multiple times -- wasteful
       // menu item index is offset from attrArray index by 1
       // because menu always has "text" at index 1
-      console.log("attrArray at index "+(idx - 1),attrArray[idx - 1]);
-      scrape.name = attrArray[idx - 1].attr;
-      scrape.color = colorArr[colorIndex];
-      scrape.value = attrArray[idx - 1].value;
-    });
+      scrape.data[numKeys].values[i] = attrArray[idx - 1].value;
+    }
   }
 
-  // update popCtrlWin with new no. of keys tracked
+  // update popCtrlWin contents
   // ******** UPGRADE: have user enter a key name for this set of values **********
-  var numKeysSelected = $("#numKeysSelected").html().split(" ")[0];
-  numKeysSelected++;
-  $("#numKeysSelected").text(numKeysSelected + " keys selected");
   $("#popCtrlWin")
-    .append("<div><div style='display:inline-block;margin: 10px 10px 0 0;width:15px;height:15px;border:1px solid black;background-color:" + scrape.color + "'></div><p>" + scrape.name + "</p></div>");
-
-  //$("#popCtrlWin").append("<div><div id='colorbox-" + numKeysSelected + "' style='height:20px;width:20px;background-color:" + scrape.color + "></div><p>" + scrape.name + "</p></div>");
-
-/*  // output scrapeValues array to global arrays
-  console.log("outputting array",scrapeValues);
-  arrays.push(scrapeValues);  // "arrays" becomes array of arrays
-  fields.push("Key_" + arrays.length);
-  console.log("fields:",fields);
-  console.log("arrays:",arrays);*/
-
-  console.log("scrape array",scrape);
+    .append("<div><div style='display:inline-block;margin: 10px 10px 0 0;width:15px;height:15px;border:1px solid black;background-color:" + colorArr[colorIndex] + "'></div><p>" + scrape.data[numKeys].keyname + "</p></div>");
+  numKeys++;
+  $("#numKeysSelected").text(numKeys + " keys selected");
 
   return false;  // critical!
 }
 
 
+function uploadScrape() {
+  scrape.source = window.location.href;
+  scrape.time = Math.floor(Date.now() / 1000);  // convert JS time to UNIX time
+  console.log("uploading:",scrape);
+
+  // post JSON object to Firebase under new key
+  $.ajax({
+    url: "https://domscraper.firebaseio.com/datasets/.json",
+    method: "POST",
+    data: JSON.stringify(scrape)
+  }).done(function(objReceivedFromFB) {  // AJAX returns object {name: newkeyname}
+    console.log("posted new key",objReceivedFromFB.name);
+    // spawn a new tab or window that displays, in tabular format, the data you just collected
+    // re-initialize globals
+    spawnWindow(objReceivedFromFB.name);
+    $("#numKeysSelected").text("0 keys selected");  // reset key counter
+    // also post a function that can be used as the basis for a pseudo-API
+  });
+}
+
+
 function popControlWin() {
   $("body").append("<div id='popCtrlWin'><p class='scrapeignore'>DOMscraper</p><p class='scrapeignore' id='numKeysSelected'>0 keys selected</p><button id='button-upload'>Upload</button></div>");
+  $("#button-upload").on("click",uploadScrape);
   $("#popCtrlWin").draggable();
 }
 
@@ -421,4 +438,16 @@ function killPopUp(popOrigin) {
 function augmentCSS() {
   // this allows our CSS definitions to be used on the web page we're scraping
   $("head").append('<style type="text/css"> #popUp {border: 2px solid black; background-color: #F90; } #popUp ul {margin: 0; padding: 0; } .popUpItem {margin: 0; padding: 0 0 0 5px; } .popUpItem:hover {background-color: blue; color: white; } .highlighted {background-color: #3CE; } #popCtrlWin {border: 2px solid black; background-color: #FFEBDE; width: 120px; }</style>');
+}
+
+
+function spawnWindow(firebaseKey) {
+  $.ajax({
+    url: "https://domscraper.firebaseio.com/cheatKey.json",
+    method: "PATCH",
+    data: JSON.stringify( {fbKey: firebaseKey} )
+  }).done(function(response) {
+    console.log("PUT ",response);
+  });
+  window.open("http://localhost:8080/showResults.html").focus();
 }
