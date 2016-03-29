@@ -18,8 +18,11 @@ popControlWin();
 
 
 function test() {
-  console.log(window.location.href);
+  popControlWin();
+  $("#popCtrlWin")
+  .append("<div class='tagWrapper'><div class='colorBlock'></div><p>Bokonon</p></div>");
 }
+
 
 function disableListeners() {
 
@@ -195,7 +198,6 @@ function mapTree() {
     for (var i = 0; i < chlist.length; i++) {  // loop through immediate children of this element
       var newid = writeDOMid( chlist[i], parentID, i );
       if ( $(chlist[i]).attr("dom_node_type") === "V") {  // takes too long -- not for production version
-        //$(chlist[i]).html($(chlist[i]).html() + "......" + newid);  // label V nodes in the DOM with their dom_ids
         $("body").append("<div class='dpop' id='pop-" + newid + "' style='display: inline-block; position: absolute; padding: 6px; background: #eee; color: #000; border: 2px solid #1a1a1a; font-size: 90%; border-radius: 15px'>" + newid + "</div>");
         $("#pop-" + newid).hide();
       }
@@ -347,15 +349,12 @@ function popUp(e,cursor) {
 }
 
 function actionOnMenuItemClick(e,cursor,idx) {
-  // have to define this listener from within function where scrape is within scope
-  var nodeMapKey = idx - 1;
-
   // get next highlight color
   var colorArr = ["yellow",
                   "coral",
                   "greenyellow",
                   "aqua",
-                  "chartreuse",
+                  "pink",
                   "gold",
                   "darkorange",
                   "chocolate"];
@@ -383,17 +382,17 @@ function actionOnMenuItemClick(e,cursor,idx) {
       var o = getOriginNode($(`[dom_id='${cursor[i].dom_id}']`));
       writeOriginAttrForNet(o);  // slow slow slow
       var attrArray = getAllAttributesInNet(o);  // computation-heavy...
-      scrape.data[numKeys].keyname = attrArray[0].attr;  // will get written multiple times -- wasteful
       // menu item index is offset from attrArray index by 1
       // because menu always has "text" at index 1
+      scrape.data[numKeys].keyname = attrArray[idx - 1].attr;  // will get written multiple times -- wasteful
       scrape.data[numKeys].values[i] = attrArray[idx - 1].value;
-    }
+    } 
   }
 
   // update popCtrlWin contents
   // ******** UPGRADE: have user enter a key name for this set of values **********
   $("#popCtrlWin")
-    .append("<div><div style='display:inline-block;margin: 10px 10px 0 0;width:15px;height:15px;border:1px solid black;background-color:" + colorArr[colorIndex] + "'></div><p>" + scrape.data[numKeys].keyname + "</p></div>");
+    .append(`<div class='tagWrapper'><div class='colorBlock' style='background-color:${colorArr[colorIndex]}'></div><p>${scrape.data[numKeys].keyname}</p></div>`);
   numKeys++;
   $("#numKeysSelected").text(numKeys + " keys selected");
 

@@ -18,18 +18,18 @@ $(function() {
       var numThings = obj.data[0].values.length;
 
       var str = "<h2>scraped from " + obj.source + "at time " + obj.time + "</h2>";
-      str += "<table><tr><td>key</td>";
+      str += "<table><tr><td class='keynum'>key</td>";
 
       // header row
       obj.data.forEach( (thisObj,i) => {
-        str += "<td>" + thisObj.keyname + "</td>";
+        str += "<td class='columnHeader'>" + thisObj.keyname + "</td>";
       });
       str += "</tr>";
 
       // data rows, one per "thing"
       for (var i = 0; i < numThings; i++){
         str += "<tr>";
-        str += "<td>" + i + "</td>";
+        str += "<td class='keynum'>" + i + "</td>";
         for (var j = 0; j < obj.data.length ; j++) {
           str += `<td class='key${j}'>${obj.data[j].values[i]}</td>`;
         }
@@ -43,6 +43,10 @@ $(function() {
         console.log("color", obj.data[j].color);
         $(".key" + j).css("background-color",obj.data[j].color);
       }
+
+      // apply styling to leftmost "key" column
+      $(".keynum").css("background-color","#CCC").css("width","25px");
+      $(".columnHeader").css("background-color","#CCC");
     });
   });
 });
