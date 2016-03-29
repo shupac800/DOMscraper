@@ -268,6 +268,7 @@ function getAllAttributesInNet(originNode) {
              thisAttr.attr !== "dom_node_type" &&
              thisAttr.attr !== "origin-node" &&
              thisAttr.attr !== "rel" &&
+             thisAttr.attr !== "style" &&
              thisAttr.attr.slice(0,3) !== "ng-");
   });
   return attrArray;  // attrArray is array of {attr:value} objects
@@ -371,22 +372,33 @@ function actionOnMenuItemClick(e,cursor,idx) {
   if (idx === 0) {  // clicked on the first item in the pop-up menu, which is always "text"
     scrape.data[numKeys].keyname = "text";
     for (var i = 0; i < cursor.length; i++) {
-      scrape.data[numKeys].values[i] = $(cursor[i].nodeHTML).text();
+      var o = getOriginNode($(`[dom_id='${cursor[i].dom_id}']`));
+      var oid = $(o).attr("dom_id");
+      scrape.data[numKeys].values[i] = { origin_id: oid, value: $(cursor[i].nodeHTML).text()  };
     }
     $(".highlighted").removeClass("highlighted").css("background-color",colorArr[colorIndex]);
   } else {         // clicked on item other than first one, meaning, an attribute
+
+    // note that attrArray can get out of sync with displayed menu
+    // because selecting something from the menu can add a style attribute that shows up in attrArray
+    // fix this!
+    // one solution: close the popUpMenu after each attribute is selected
+    // or, redisplay the popUpMenu after each attribute is selected
+
     console.clear();
     console.log("working on it...");
     for (var i = 0; i < cursor.length; i++) {
       console.log("cursor row",i);
       var o = getOriginNode($(`[dom_id='${cursor[i].dom_id}']`));
+      var oid = $(o).attr("dom_id");
       writeOriginAttrForNet(o);  // slow slow slow
       var attrArray = getAllAttributesInNet(o);  // computation-heavy...
       // menu item index is offset from attrArray index by 1
       // because menu always has "text" at index 1
       scrape.data[numKeys].keyname = attrArray[idx - 1].attr;  // will get written multiple times -- wasteful
-      scrape.data[numKeys].values[i] = attrArray[idx - 1].value;
-    } 
+      //scrape.data[numKeys].values[i] = attrArray[idx - 1].value;
+      scrape.data[numKeys].values[i] = {origin_id: oid, value: attrArray[idx - 1].value}
+    }
   }
 
   // update popCtrlWin contents
@@ -396,20 +408,24 @@ function actionOnMenuItemClick(e,cursor,idx) {
   numKeys++;
   $("#numKeysSelected").text(numKeys + " keys selected");
 
+  killPopUp();
   return false;  // critical!
 }
 
 
 function uploadScrape() {
-  scrape.source = window.location.href;
-  scrape.time = Math.floor(Date.now() / 1000);  // convert JS time to UNIX time
-  console.log("uploading:",scrape);
+  var things =convertScrape();  // organize scraped data into "things"
+
+  var postObj = { source: window.location.href,
+                  time: Math.floor(Date.now() / 1000),  // convert JS time to UNIX time
+                  things: things };
+  console.log("uploading:",postObj);
 
   // post JSON object to Firebase under new key
   $.ajax({
     url: "https://domscraper.firebaseio.com/datasets/.json",
     method: "POST",
-    data: JSON.stringify(scrape)
+    data: JSON.stringify(postObj)
   }).done(function(objReceivedFromFB) {  // AJAX returns object {name: newkeyname}
     console.log("posted new key",objReceivedFromFB.name);
     // spawn a new tab or window that displays, in tabular format, the data you just collected
@@ -421,8 +437,32 @@ function uploadScrape() {
 }
 
 
+function convertScrape() {
+  var things = {};
+  console.log("initialized things as",things);
+  // things has a bunch of keys
+  // the name of each key is an origin_id
+  // each key is an array of objects
+  console.log("scrape",scrape);
+  for (var i = 0; i < scrape.data.length; i++) {
+    console.log("processing i=",i);
+    for (var j = 0; j < scrape.data[i].values.length; j++) {
+      console.log("processing j=",j);
+      var origin_id = scrape.data[i].values[j].origin_id;
+      if (!(origin_id in things)) {  // does this key already exist in things? if not...
+        things[origin_id] = [];  // initialize new key
+      }
+      var newObj = {};
+      newObj[`"${scrape.data[i].keyname}"`] = `${scrape.data[i].values[j].value}`;
+      things[origin_id].push(newObj);
+    }
+  }
+  return things;
+}
+
+
 function popControlWin() {
-  $("body").append("<div id='popCtrlWin'><p class='scrapeignore'>DOMscraper</p><p class='scrapeignore' id='numKeysSelected'>0 keys selected</p><button id='button-upload'>Upload</button></div>");
+  $("body").append("<div id='popCtrlWin'><p class='scrapeignore'>DOMscraper</p><p class='scrapeignore' id='numKeysSelected'>0 keys selected</p><button id='button-upload'>Upload</button><button id='button-clear'>Clear</button></div>");
   $("#button-upload").on("click",uploadScrape);
   $("#popCtrlWin").draggable();
 }
