@@ -354,9 +354,9 @@ function actionOnMenuItemClick(e,cursor,idx) {
   var colorArr = ["yellow",
                   "coral",
                   "greenyellow",
+                  "aqua",
                   "chartreuse",
                   "gold",
-                  "hotpink",
                   "darkorange",
                   "chocolate"];
   var numKeys = $("#numKeysSelected").text().split(" ")[0]  // number of keys scraped so far

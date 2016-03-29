@@ -199,7 +199,7 @@ function spawnWindow(firebaseKey) {
   $.ajax({
     url: "https://domscraper.firebaseio.com/cheatKey.json",
     method: "PATCH",
-    data: JSON.stringify({fbKey: firebaseKey})
+    data: JSON.stringify( {fbKey: firebaseKey} )
   }).done(function(response) {
     console.log("PUT ",response);
   });
