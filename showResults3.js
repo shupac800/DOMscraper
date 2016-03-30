@@ -1,5 +1,8 @@
 "use strict";
 
+//globals
+var fff;
+
 $(function() {
   $.ajax({
     url: "https://domscraper.firebaseio.com/cheatKey.json",
@@ -18,52 +21,66 @@ $(function() {
       var numThings = Object.keys(obj.things).length;
 
       // collect data types from each key of each thing
-      var dataTypes = []; // initialize
+      var dataTypesAll = []; // initialize
       var oids = Object.keys(obj.things);  // each key is an origin_id
-      console.log("oids",oids);
       oids.forEach(function(thisOid,i) {
-         console.log("oid "+ i,thisOid);
-         console.log("thisOid length",obj.things[thisOid].length);
         obj.things[thisOid].forEach(function(thisObj,j) {
-          console.log("obj "+j,thisObj);
-          //console.log("key " + thisKey + " has " + "keys:",Object.keys(obj.things[thisOid][thisKey]));
-         });
-           //dataTypes.push(Object.keys(thisKey));
+          Object.keys(thisObj).forEach(function(thisKey,k) {
+            // remove double quotes and add to array
+            dataTypesAll.push(thisKey.replace(/"/gm,""));
+          })
+        });
       });
+      var dataTypes = $.unique(dataTypesAll);  // remove duplicate data types
       console.log("dataTypes found:",dataTypes);
-      // remove duplicates
 
       var str = "<h2>scraped from " + obj.source + "at time " + obj.time + "</h2>";
       str += "<table><tr><td class='thingnum'>thing</td>";
 
       // header row
-      obj.data.forEach( (thisObj,i) => {
-        str += "<td class='columnHeader'>" + thisObj.keyname + "</td>";
+      var colHdr = [];
+      dataTypes.forEach( (thisType,i) => {
+        str += "<td class='columnHeader'>" + thisType + "</td>";
+        colHdr[i] = thisType;
       });
       str += "</tr>";
 
-      var keys = Object.keys(obj.things);  // each key is an origin_id
       // data rows
-      keys.forEach(function(thisKey,i) {
+      oids.forEach(function(thisOid,i) {
         str += "<tr>";
         str += "<td class='thingnum'>" + i + "</td>";
-        obj.things[thisKey].forEach(function(dataObj,j) {
-           
-        });
+        for (var k = 0; k < obj.things.length; k++){
+          console.log("checking obj",obj.things[k]);
+          for (var m = 0; m < dataTypes.length; m++ ) {
+            console.log("    checking dataType",dataTypes[m]);
+            var keys = Object.keys(obj.things[k]);
+            for (var n = 0; n < keys.length; n++) {
+              console.log("          checking key ",keys[n]);
+              console.log("comparing " + keys[n] + " to " + dataTypes[m]);
+              if (keys[n].replace(/"/gm,"") === dataTypes[m]) {
+                str += "<td>" + obj.things[k][keys[n]] + "</td>";
+                console.log("wrote <td>" + obj.things[k][keys[n]] + "</td>");
+                n = keys.length;
+                m = dataTypes.length;
+                k++; // i.e. go on to next dataType
+              } else {
+                str += "<td></td>";
+                console.log("wrote blank cell");
+              }
+            }
+          }
+        };
       });
-        for (var j = 0; j < obj.data.length ; j++) {
-          str += `<td class='key${j}'>${obj.data[j].values[i]}</td>`;
-        }
-        str += "</tr>";
+      console.log("str",str);
       
       str += "</table>";
       $("#stuffGoesHere").html(str);
 
-      // add key color to columns
+/*      // add key color to columns
       for (var j = 0; j < obj.data.length; j++) {
         console.log("color", obj.data[j].color);
         $(".key" + j).css("background-color",obj.data[j].color);
-      }
+      }*/
 
       // apply styling to leftmost "key" column
       $(".thingnum").css("background-color","#CCC").css("width","25px");

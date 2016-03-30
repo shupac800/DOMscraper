@@ -2,8 +2,7 @@
 
 // globals
 var scrape =  { source: null,
-                time:   null,
-                data:   []    };
+                time:   null };
 
 console.clear();
 console.log("running");
@@ -11,16 +10,13 @@ writeDOMNodeType();
 mapTree();
 disableListeners();
 activateListeners();
-augmentCSS();  // do we need this?
+//augmentCSS();  // do we need this?
 popControlWin();
 //main();
 //test();
 
 
 function test() {
-  popControlWin();
-  $("#popCtrlWin")
-  .append("<div class='tagWrapper'><div class='colorBlock'></div><p>Bokonon</p></div>");
 }
 
 
@@ -90,22 +86,45 @@ function actionOnClick(e) {
     classStr += "." + thisClass;
   });
   var z = `${tag}${classStr}:not(.scrapeignore):nth-child(${index + 1})`;
-  var clicked_dom_id = $(e.target).attr("dom_id");
+
+  var cursor = loadCursor(e,z);
+
+  // now you can loop through the node list in the cursor and do whatever you like
+  cursor.forEach(function(c) {
+    $(c.nodeHTML).addClass("highlighted");
+  });
+
+  popUp(e,cursor);
+
+  // The return value of an event handler determines whether or not
+  // the default browser behavior should take place as well.
+  return false;  // may be belt and suspenders to preventDefault() and stopPropagation()
+}
+
+function loadCursor(e,z) {  // put all items selected by z into array "cursor"
+  var cursor = [];
+  var clicked_dom_id = $(e.target).attr("dom_id");  // clicked_dom_id = "cdi"
   var cdi_origin_id = $(getOriginNode(e.target)).attr("dom_id");
   var cdi_fields = clicked_dom_id.split("_");
-
-  // put all z-cursor items in array
-  var cursor = [];
   var mismatch_count = new Array(cdi_fields.length).fill(0); // initialize array with zeroes; note ES6 only
+
   $(z).each(function() {
-    cursor.push( { nodeHTML: this,
-                   dom_id: $(this).attr("dom_id") } );
+    var nodeHTML = this;
+    var dom_id = $(this).attr("dom_id");
+    var origin_node = getOriginNode(this);
+    var origin_id = $(origin_node).attr("dom_id");
+    cursor.push( { nodeHTML: nodeHTML,
+                   dom_id: dom_id,
+                   origin_node: origin_node,
+                   origin_id: origin_id } );
   });
+
   // filter out any dom_id's of different length than dom_id of clicked-on element
   console.log("cursor contents",cursor);
   cursor = cursor.filter(function(c) {
     return c.dom_id.split("_").length === cdi_fields.length;
   });
+
   // filter out any dom_id's that differ from clicked-on element by more than 1 field
   cursor = cursor.filter(function(c) {
     var c_fields = c.dom_id.split("_");
@@ -117,7 +136,8 @@ function actionOnClick(e) {
     }
     return matches >= cdi_fields.length - 1;
   });
-  cursor.forEach(function(c,i) {
+
+  cursor.forEach(function(c) {
     //identify the field where the mismatch with the clicked dom_id occurs
     var cArray = c.dom_id.split("_");
     for(var j = 0; j < cdi_fields.length; j++) {
@@ -156,22 +176,7 @@ function actionOnClick(e) {
     return c.dom_id.match(matchString);  // evaluates to null (falsy) if no match
   });
 
-  // now you can loop through the node list in the cursor and do whatever you like
-  // should solve missing value problem
-  cursor.forEach(function(c,i) {
-    $(c.nodeHTML).addClass("highlighted");
-  });
-
-  //console.log("you clicked on dom_id",$(e.target).attr("dom_id"));
-  //console.log("it is type",classifyNode(e.target));
-
-  writeOriginAttrForNet(getOriginNode(e.target));  // augment all nodes in this net with attr "origin-node"
-
-  popUp(e,cursor);
-
-  // The return value of an event handler determines whether or not
-  // the default browser behavior should take place as well.
-  return false;  // may be belt and suspenders to preventDefault() and stopPropagation()
+  return cursor;
 }
 
 
@@ -209,7 +214,7 @@ function mapTree() {
 
 
 // from http://creativeindividual.co.uk/2011/02/create-a-pop-up-div-in-jquery/
-$(function() {
+/*$(function() {
   $("[dom_node_type='V']").hover(function(e) {
     var s = $(e.target).attr("dom_id");
     $("#pop-" + s).show("fast")
@@ -220,7 +225,7 @@ $(function() {
     var s = $(e.target).attr("dom_id");
     $("#pop-" + s).hide();
   });
-});
+});*/
 
 
 function writeDOMid(node,parentID,index) {
@@ -231,7 +236,7 @@ function writeDOMid(node,parentID,index) {
 
 
 function writeOriginAttrForNet(originNode) {
-  var originID = $(originNode).attr("dom_id");
+  var originID = $(originNode).attr("dom_id");  // need this?
   $(originNode).attr("origin-node",originID);
   $(originNode).find("*").each(function(x) {
     $(this).attr("origin-node",originID);
@@ -251,13 +256,13 @@ function buildPopUpMenu(clickedEl) {
 
 function getAllAttributesInNet(originNode) {
   var originID = $(originNode).attr("dom_id");
-  var nodesInNet = $("[origin-node='" + originID + "']"); // undefined except for clicked-on element
+  var nodesInNet = $("[origin-node='" + originID + "']");
   var attrArray = [];
   $(nodesInNet).each(function(x) {
     var namedNodeMap = this.attributes; // NNM is an object
-    Object.keys(namedNodeMap).forEach(function(i, key) {
-      attrArray.push( { attr: namedNodeMap[key].name,
-                        value: namedNodeMap[key].value } );
+    Object.keys(namedNodeMap).forEach(function(key) {
+      attrArray.push( { attr:     namedNodeMap[key].name,
+                        value:    namedNodeMap[key].value } );
     });
   });
   // filter out attributes we don't care about so they won't clutter up the pop-up menu
@@ -336,6 +341,7 @@ function popUp(e,cursor) {
   $("popUpMenu").hide();
   $("#popUpMenu").offset( {top:e.pageY, left:e.pageX} );
   console.log("sending buildPopUpMenu", e.target);
+  writeOriginAttrForNet(getOriginNode(e.target));  // augment all nodes in this net with attr "origin-node"; needed for buildPopUpMenu
   var menuHTML = buildPopUpMenu(e.target);
   $("#popUpMenu").html(menuHTML);
   $("#popUpMenu").show("fast");
@@ -362,49 +368,37 @@ function actionOnMenuItemClick(e,cursor,idx) {
   var numKeys = $("#numKeysSelected").text().split(" ")[0]  // number of keys scraped so far
   var colorIndex = numKeys % colorArr.length;
 
-  // initialize next level of scrape object
-  cursor.forEach( (c,i) => {
-    scrape.data[numKeys] = {  keyname:   null,
-                              color:     colorArr[colorIndex],
-                              values:    []                      };
-  });
-
-  if (idx === 0) {  // clicked on the first item in the pop-up menu, which is always "text"
-    scrape.data[numKeys].keyname = "text";
-    for (var i = 0; i < cursor.length; i++) {
-      var o = getOriginNode($(`[dom_id='${cursor[i].dom_id}']`));
-      var oid = $(o).attr("dom_id");
-      scrape.data[numKeys].values[i] = { origin_id: oid, value: $(cursor[i].nodeHTML).text()  };
+  // populate scrape.originID for each item in cursor
+  for (var i = 0; i < cursor.length; i++) {
+    console.log("cursor-sub-"+i,cursor[i]);
+    if (idx === 0) {
+      var keyname = "text";
+      var value = $(cursor[i].nodeHTML).text();
+    } else {
+      console.log("working on it...");
+      // have to pick attribute out of attrArray for cursor item
+      if (!$(cursor[i].origin_node).attr("origin-node")) {
+        writeOriginAttrForNet(origin_node);    
+      }
+      console.log("getting attrArray for origin node = ",cursor[i].origin_id);
+      var attrArray = getAllAttributesInNet(cursor[i].origin_node);
+      var value = attrArray[idx - 1].value;
+      var keyname = attrArray[idx - 1].attr;
     }
-    $(".highlighted").removeClass("highlighted").css("background-color",colorArr[colorIndex]);
-  } else {         // clicked on item other than first one, meaning, an attribute
-
-    // note that attrArray can get out of sync with displayed menu
-    // because selecting something from the menu can add a style attribute that shows up in attrArray
-    // fix this!
-    // one solution: close the popUpMenu after each attribute is selected
-    // or, redisplay the popUpMenu after each attribute is selected
-
-    console.clear();
-    console.log("working on it...");
-    for (var i = 0; i < cursor.length; i++) {
-      console.log("cursor row",i);
-      var o = getOriginNode($(`[dom_id='${cursor[i].dom_id}']`));
-      var oid = $(o).attr("dom_id");
-      writeOriginAttrForNet(o);  // slow slow slow
-      var attrArray = getAllAttributesInNet(o);  // computation-heavy...
-      // menu item index is offset from attrArray index by 1
-      // because menu always has "text" at index 1
-      scrape.data[numKeys].keyname = attrArray[idx - 1].attr;  // will get written multiple times -- wasteful
-      //scrape.data[numKeys].values[i] = attrArray[idx - 1].value;
-      scrape.data[numKeys].values[i] = {origin_id: oid, value: attrArray[idx - 1].value}
+    if (!(cursor[i].origin_id in scrape)) {
+      scrape[cursor[i].origin_id] =  [];
     }
+    // add data object to array scrape[origin_id]
+    scrape[cursor[i].origin_id].push( { keyname: keyname,
+                                        color: colorArr[colorIndex],
+                                        value: value } );
   }
+  console.log("scrape",scrape);
 
   // update popCtrlWin contents
   // ******** UPGRADE: have user enter a key name for this set of values **********
   $("#popCtrlWin")
-    .append(`<div class='tagWrapper'><div class='colorBlock' style='background-color:${colorArr[colorIndex]}'></div><p>${scrape.data[numKeys].keyname}</p></div>`);
+    .append(`<div class='tagWrapper'><div class='colorBlock' style='background-color:${colorArr[colorIndex]}'></div><p>${keyname}</p></div>`);
   numKeys++;
   $("#numKeysSelected").text(numKeys + " keys selected");
 
@@ -414,8 +408,8 @@ function actionOnMenuItemClick(e,cursor,idx) {
 
 
 function uploadScrape() {
-  var things =convertScrape();  // organize scraped data into "things"
-  console.log("things",things);
+  //var things =convertScrape();  // organize scraped data into "things"
+  //console.log("things",things);
   return; // *********** TESTING
 
   var postObj = { source: window.location.href,

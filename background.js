@@ -11,7 +11,7 @@
 
 chrome.browserAction.onClicked.addListener(function(tab) {
   chrome.tabs.executeScript(
-    null, {file: "content_script3.js"}
+    null, {file: "content_script4.js"}
   );
 });
 
