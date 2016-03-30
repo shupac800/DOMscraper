@@ -1,8 +1,7 @@
 "use strict";
 
 // globals
-var scrape =  { source: null,
-                time:   null };
+var scrape =  {};
 
 console.clear();
 console.log("running");
@@ -408,7 +407,7 @@ function actionOnMenuItemClick(e,cursor,idx) {
 
 
 function uploadScrape() {
-  //var things =convertScrape();  // organize scraped data into "things"
+  roundOutScrape();  // make sure all things in scrape have same set of keys, with values or not
   //console.log("things",things);
   return; // *********** TESTING
 
@@ -433,39 +432,47 @@ function uploadScrape() {
 }
 
 
-function convertScrape() {
-  // each "thing" has a unique origin_id
-  var things = {};
-  // things has a bunch of keys
-  // the name of each key is an origin_id
-  // each key is an array of objects
-  console.log("scrape",scrape);
-  for (var i = 0; i < scrape.data.length; i++) {
-    for (var j = 0; j < scrape.data[i].values.length; j++) {
-      var origin_id = scrape.data[i].values[j].origin_id;
-      if (!(origin_id in things)) {  // does this key already exist in things? if not...
-        things[origin_id] = [];  // initialize new key
-      }
-      var newObj = {};
-      newObj[`"${scrape.data[i].keyname}"`] = `${scrape.data[i].values[j].value}`;
-      things[origin_id].push(newObj);
-    }
-  }
+function roundOutScrape() {
   // make sure all bottom-level objects have same keys
   // fill with value = null where appropriate
-        // collect data types from each key of each thing
+
+  // collect data types from each key of each thing
   var dataTypesAll = []; // initialize
-  var oids = Object.keys(things);  // each key is an origin_id
-  oids.forEach(function(thisOid,i) {
-    things[thisOid].forEach(function(thisObj,j) {
-      Object.keys(thisObj).forEach(function(thisKey,k) {
-        // remove double quotes and add to array
-        dataTypesAll.push(thisKey.replace(/"/gm,""));
-      })
+  var things = Object.keys(scrape);  // each key in scrape is a "thing" with unique origin_id
+  things.forEach(function(thisThing) {  // "thisThing" is array of objects
+    var dataTypesForThisThing = [];
+    scrape[thisThing].forEach(function(thisObj) {
+      //console.log("thisObj",thisObj);
+      //console.log("thisObj.keyname",thisObj.keyname);
+      dataTypesForThisThing.push(thisObj.keyname);
     });
+    scrape[thisThing].dataTypes = dataTypesForThisThing;
+    //console.log("data types for this thing:",scrape[thisThing].dataTypes);
+    dataTypesAll = dataTypesAll.concat(dataTypesForThisThing);
   });
+
   var dataTypes = $.unique(dataTypesAll);  // remove duplicate data types
-  console.log("dataTypes found:",dataTypes);
+  console.log("unique dataTypes found:",dataTypes);
+
+  things.forEach(function(thisThing) {  // "thisThing" is array of objects
+    var missingDataTypes = dataTypesAll.filter(function(thisType) {
+      var thisDataTypeIsInThisThing = false;
+      scrape[thisThing].dataTypes.forEach(function(t) {
+        if (t === thisType) {
+          thisDataTypeIsInThisThing = true;
+        }
+      });
+      return thisDataTypeIsInThisThing === false;
+    });
+    console.log("data types missing from this thing:",missingDataTypes);
+    missingDataTypes.forEach(function(thisMissingType) {
+      scrape[thisThing].push( { keyname: thisMissingType,
+                                color:   "",
+                                value:   ""} );
+    });
+    console.log("scrape",scrape);
+  });
+
   /*oids.forEach(function(thisOid,i) {
     dataTypes.forEach(function(thisType) {
       things[thisOid].forEach(function(thisObj,j) {
@@ -489,7 +496,7 @@ function convertScrape() {
     });
   });*/
 
-  oids.forEach(function(thisOid) {
+/*  oids.forEach(function(thisOid) {
     console.log(Object.keys(things[thisOid]));  // ["0","1"] and ["0"]
     var objects = [];
     Object.keys(things[thisOid]).forEach(function(thisKey) {
@@ -509,7 +516,7 @@ function convertScrape() {
     });
     console.log("missing",typesNotInKey);
   });
-  return things;
+  return things;*/
 }
 
 
