@@ -24,6 +24,11 @@
   background-color: #3CE;
 }
 
+.highlightedDiv {
+  background-color: #FFED56 !important;
+  border: 2px dotted black;
+}
+
 #popCtrlWin {
   position: fixed;
   z-index: 998;
@@ -56,4 +61,8 @@
 .tagWrapper p {
   margin: 0 0 0 25px;
   padding: 0;
+}
+
+attr {
+  display: none;
 }

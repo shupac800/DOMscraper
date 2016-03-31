@@ -2,13 +2,15 @@
 
 // globals
 var keyname = [];
+var key0fields = [];
+var mask = [];
 
 console.clear();
 console.log("running");
 writeDOMNodeType();
 mapTree();
 disableListeners();
-activateListeners();
+activateDivListeners();
 //augmentCSS();  // do we need this?
 popControlWin();
 //main();
@@ -63,9 +65,8 @@ function disableListeners() {
 }
 
 
-function activateListeners() {
+function activateDivListeners() {
   var q = $("body *");
-  //var q = $("[dom_node_type='V'");  // attach click listener to all visible elements (misses some on cars.com)
   for (var i = 0; i < q.length; i++) {
     $(q[i]).on("click",actionOnClick);
   }
@@ -107,7 +108,7 @@ function loadCursor(e,z) {  // put all items selected by z into array "cursor"
   var cdi_fields = clicked_dom_id.split("_");
   var mismatch_count = new Array(cdi_fields.length).fill(0); // initialize array with zeroes; note ES6 only
 
-  $(z).each(function() {
+  $(z).each(function(i) {
     var nodeHTML = this;
     var dom_id = $(this).attr("dom_id");
     var origin_node = getOriginNode(this);
@@ -116,6 +117,29 @@ function loadCursor(e,z) {  // put all items selected by z into array "cursor"
                    dom_id: dom_id,
                    origin_node: origin_node,
                    origin_id: origin_id } );
+    // if this is the first key
+    if (i === 0) {
+        console.log("key0fields",key0fields);
+      if (keyname.length === 0) {  // first dom_id of first key (key0) is basis for mask construction
+        key0fields = dom_id.split("_");
+        console.log("created key0fields as",key0fields);
+      } else {  // current key is keyN, not key0
+        // construct a mask that is diff btw idx=0 in keyN and idx=0 in key0
+        var keyNfields = dom_id.split("_");
+        console.log("keyNfields",keyNfields);
+        // mask is constructed by looping through longer dom_id, then is applied to shorter dom_id
+        var padLength = Math.abs(key0fields.length - keyNfields.length);
+        if (key0fields.length >= keyNfields.length) { // key0 item has more fields, or same as, keyN fields
+          keyNfields = keyNfields.concat(new Array(padLength).fill("0"));
+        } else {
+          key0fields = key0fields.concat(new Array(padLength).fill("0"));
+        }
+        // now that we have 2 arrays of same length, construct mask that is array of differences in digits
+        for (var j = 0; j < keyNfields.length; j++) {
+          mask[j] = parseInt(keyNfields[j]) - parseInt(key0fields[j]);
+        }
+      }
+    }
   });
 
   // filter out any dom_id's of different length than dom_id of clicked-on element
@@ -170,6 +194,26 @@ function loadCursor(e,z) {  // put all items selected by z into array "cursor"
     return c.dom_id.match(matchString);  // evaluates to null (falsy) if no match
   });
 
+  // parse cursor for instances where dom_id !== expected_dom_id
+  // in those cases, insert a blank object into the cursor array
+  for (var a = 0; a < keyname.length; a++) {
+    if (keyname.length > 0) {
+      // use mask to construct, from key1 dom_id at index a, expected value for keyN dom_id at index a
+      var expected_dom_id = "0";
+      key0fields = keyname[0].values[a].dom_id.split("_");
+      for (var k = 0; k < mask.length; k++) {
+        expected_dom_id += "_" + (parseInt(key0fields[k]) + parseInt(mask[k]))
+      }
+      if (cursor[a].dom_id !== expected_dom_id) {
+        console.log("found missing value at key " + keyname.length + " index " + a);
+        //insert null value into cursor
+        cursor.splice(a,0,{nodeHTML: "<p></p>",
+                           dom_id: -1,
+                           origin_node: -1,
+                           origin_id: -1 });
+      }
+    }
+  }
   return cursor;
 }
 
@@ -208,7 +252,7 @@ function mapTree() {
 
 
 // from http://creativeindividual.co.uk/2011/02/create-a-pop-up-div-in-jquery/
-$(function() {
+/*$(function() {
   $("[dom_node_type='V']").hover(function(e) {
     var s = $(e.target).attr("dom_id");
     $("#pop-" + s).show("fast")
@@ -219,7 +263,7 @@ $(function() {
     var s = $(e.target).attr("dom_id");
     $("#pop-" + s).hide();
   });
-});
+});*/
 
 
 function writeDOMid(node,parentID,index) {
@@ -349,7 +393,7 @@ function popUp(e,cursor) {
   });
 }
 
-function actionOnMenuItemClick(e,cursor,idx) {
+function actionOnMenuItemClick(e,cursor,menuIndex) {
   // get next highlight color
   var colorArr = ["yellow",
                   "coral",
@@ -372,7 +416,7 @@ function actionOnMenuItemClick(e,cursor,idx) {
   // initilize new entry in keyname array
   keyname[keynum] = { name: null, values: [] };
 
-  if (idx === 0) {  // clicked on the first item in the pop-up menu, which is always "text"
+  if (menuIndex === 0) {  // clicked on the first item in the pop-up menu, which is always "text"
     keyname[keynum].name = "text";
     for (var i = 0; i < cursor.length; i++) {
       keyname[keynum].values.push($(cursor[i].nodeHTML).text());
@@ -389,12 +433,10 @@ function actionOnMenuItemClick(e,cursor,idx) {
       var attrArray = getAllAttributesInNet(o);  // computation-heavy...
       // menu item index is offset from attrArray index by 1
       // because menu always has "text" at index 1
-      keyname[keynum].name = attrArray[idx - 1].attr;  // will get written multiple times -- wasteful
-      if (!attrArray[idx - 1].value) {
-        console.log("null attrArray value; correcting");
-        attrArray[idx - 1].value = "";
+      if (attrArray.length > 0) {
+        keyname[keynum].name = attrArray[menuIndex - 1].attr;  // will get written multiple times -- wasteful
+        keyname[keynum].values.push(attrArray[menuIndex - 1].value);
       }
-      keyname[keynum].values.push(attrArray[idx - 1].value);
     }
   }
 

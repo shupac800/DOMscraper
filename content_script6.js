@@ -2,13 +2,15 @@
 
 // globals
 var keyname = [];
+var key0fields = [];
+var mask = [];
 
 console.clear();
 console.log("running");
 writeDOMNodeType();
 mapTree();
 disableListeners();
-activateListeners();
+activateDivListeners();
 //augmentCSS();  // do we need this?
 popControlWin();
 //main();
@@ -63,9 +65,8 @@ function disableListeners() {
 }
 
 
-function activateListeners() {
+function activateDivListeners() {
   var q = $("body *");
-  //var q = $("[dom_node_type='V'");  // attach click listener to all visible elements (misses some on cars.com)
   for (var i = 0; i < q.length; i++) {
     $(q[i]).on("click",actionOnClick);
   }
@@ -84,6 +85,8 @@ function actionOnClick(e) {
   clist.forEach( (thisClass,idx) => {
     classStr += "." + thisClass;
   });
+
+  // ************** add to z:  dom_node_type='V' ************************
   var z = `${tag}${classStr}:not(.scrapeignore):nth-child(${index + 1})`;
 
   var cursor = loadCursor(e,z);
@@ -107,7 +110,7 @@ function loadCursor(e,z) {  // put all items selected by z into array "cursor"
   var cdi_fields = clicked_dom_id.split("_");
   var mismatch_count = new Array(cdi_fields.length).fill(0); // initialize array with zeroes; note ES6 only
 
-  $(z).each(function() {
+  $(z).each(function(i) {
     var nodeHTML = this;
     var dom_id = $(this).attr("dom_id");
     var origin_node = getOriginNode(this);
@@ -116,6 +119,29 @@ function loadCursor(e,z) {  // put all items selected by z into array "cursor"
                    dom_id: dom_id,
                    origin_node: origin_node,
                    origin_id: origin_id } );
+    // if this is the first key
+    if (i === 0) {
+        console.log("key0fields",key0fields);
+      if (keyname.length === 0) {  // first dom_id of first key (key0) is basis for mask construction
+        key0fields = dom_id.split("_");
+        console.log("created key0fields as",key0fields);
+      } else {  // current key is keyN, not key0
+        // construct a mask that is diff btw idx=0 in keyN and idx=0 in key0
+        var keyNfields = dom_id.split("_");
+        console.log("keyNfields",keyNfields);
+        // mask is constructed by looping through longer dom_id, then is applied to shorter dom_id
+        var padLength = Math.abs(key0fields.length - keyNfields.length);
+        if (key0fields.length >= keyNfields.length) { // key0 item has more fields, or same as, keyN fields
+          keyNfields = keyNfields.concat(new Array(padLength).fill("0"));
+        } else {
+          key0fields = key0fields.concat(new Array(padLength).fill("0"));
+        }
+        // now that we have 2 arrays of same length, construct mask that is array of differences in digits
+        for (var j = 0; j < keyNfields.length; j++) {
+          mask[j] = parseInt(keyNfields[j]) - parseInt(key0fields[j]);
+        }
+      }
+    }
   });
 
   // filter out any dom_id's of different length than dom_id of clicked-on element
@@ -143,7 +169,7 @@ function loadCursor(e,z) {  // put all items selected by z into array "cursor"
         mismatch_count[j]++;
       }
     }
-    c.origin_id = $(getOriginNode(c.nodeHTML)).attr("dom_id");
+    c.origin_id = $(getOriginNode(c.nodeHTML)).attr("dom_id"); // ***** but c has origin_id in it, no?
   });
 
   // identify which field has the highest mismatch count
@@ -170,6 +196,7 @@ function loadCursor(e,z) {  // put all items selected by z into array "cursor"
     return c.dom_id.match(matchString);  // evaluates to null (falsy) if no match
   });
 
+  console.log("cursor: ",cursor);
   return cursor;
 }
 
@@ -207,21 +234,6 @@ function mapTree() {
 }
 
 
-// from http://creativeindividual.co.uk/2011/02/create-a-pop-up-div-in-jquery/
-$(function() {
-  $("[dom_node_type='V']").hover(function(e) {
-    var s = $(e.target).attr("dom_id");
-    $("#pop-" + s).show("fast")
-      .css('top', e.pageY + 10)
-      .css('left', e.pageX + 10)
-      .appendTo('body');
-  }, function(e) {
-    var s = $(e.target).attr("dom_id");
-    $("#pop-" + s).hide();
-  });
-});
-
-
 function writeDOMid(node,parentID,index) {
   var newid = parentID + "_" + index;
   $(node).attr("dom_id", newid);
@@ -238,39 +250,44 @@ function writeOriginAttrForNet(originNode) {
 }
 
 
-function buildPopUpMenu(clickedEl) {
-  var attrArray = getAllAttributesInNet(getOriginNode(clickedEl));
-  var menuString = "<ul style='list-style-type:none'><li class='popUpItem'>text: " + $(clickedEl).text() + "</li>";
-  for (var i = 0; i < attrArray.length; i++) {
-    menuString += "<li class='popUpItem'>" + attrArray[i].attr + ": " + attrArray[i].value + "</li>";
-  }
-  return menuString + "</ul>";
+function makeAllAttributesInNetIntoNodes(originNode) {
+  var originID = $(originNode).attr("dom_id");
+  var nodesInNet = $("[origin-node='" + originID + "']");
+  var numAttrInNet = 0;
+  $(nodesInNet).each(function(i,thisNode) {
+    console.log("foobar");
+    var namedNodeMap = this.attributes;  // NNM is an object
+    Object.keys(namedNodeMap).forEach(function(key) {
+      var attr_name = namedNodeMap[key].name;
+      if ( attr_name !== "class" &&  // skip attributes we don't care about
+           attr_name !== "id" &&
+           attr_name !== "dom_id" &&
+           attr_name !== "dom_node_type" &&
+           attr_name !== "origin-node" &&
+           attr_name !== "rel" &&
+           attr_name !== "style" &&
+           attr_name !== "attrname" &&
+           attr_name.slice(0,3) !== "ng-") {
+        var attr_dom_id = originID + "_A" + numAttrInNet++;
+        // make this attribute into an A-node in the DOM
+        $(thisNode).append(`<attr dom_node_type='A' dom_id='${attr_dom_id}' origin-node='${originID}' attrname='${attr_name}'>${namedNodeMap[key].value}</attr>`);
+      }
+    });
+  });
 }
 
 
-function getAllAttributesInNet(originNode) {
-  var originID = $(originNode).attr("dom_id");
-  var nodesInNet = $("[origin-node='" + originID + "']");
-  var attrArray = [];
-  $(nodesInNet).each(function(x) {
-    var namedNodeMap = this.attributes; // NNM is an object
-    Object.keys(namedNodeMap).forEach(function(key) {
-      attrArray.push( { attr:     namedNodeMap[key].name,
-                        value:    namedNodeMap[key].value } );
-    });
-  });
-  // filter out attributes we don't care about so they won't clutter up the pop-up menu
-  attrArray = attrArray.filter( (thisAttr) => {
-    return ( thisAttr.attr !== "class" &&
-             thisAttr.attr !== "id" &&
-             thisAttr.attr !== "dom_id" &&
-             thisAttr.attr !== "dom_node_type" &&
-             thisAttr.attr !== "origin-node" &&
-             thisAttr.attr !== "rel" &&
-             thisAttr.attr !== "style" &&
-             thisAttr.attr.slice(0,3) !== "ng-");
-  });
-  return attrArray;  // attrArray is array of {attr:value} objects
+function buildPopUpMenu(clickedEl) {
+  // get all type-A nodes in this net (i.e. with same origin as clickedEl)
+  var A_nodes = $(`attr[origin-node='${$(getOriginNode(clickedEl)).attr("dom_id")}']`);
+  console.log("A-nodes:",A_nodes);
+  // first item in menu is always "text"
+  var menuString = "<ul style='list-style-type:none'><li class='popUpItem'>text:  " + $(clickedEl).text() + "</li>";
+  // other items in menu are the A-nodes in this net
+  for (var i = 0; i < A_nodes.length; i++) {
+    menuString += `<li class='popUpItem'>${$(A_nodes[i]).attr("attrname")}:  ${$(A_nodes[i]).text()}</li>`;
+  }
+  return menuString + "</ul>";
 }
 
 
@@ -330,12 +347,19 @@ function classifyNode(node) {
   return "O";
 }
 
+
 function popUp(e,cursor) {
   $("body").append("<div id='popUpMenu'></div>");
   $("popUpMenu").hide();
   $("#popUpMenu").offset( {top:e.pageY, left:e.pageX} );
-  console.log("sending buildPopUpMenu", e.target);
-  writeOriginAttrForNet(getOriginNode(e.target));  // augment all nodes in this net with attr "origin-node"; needed for buildPopUpMenu
+  var originNode = getOriginNode(e.target);
+
+  if (!$(originNode).attr("origin-node")) {  // have "origin-node" attributes been written for this net?
+    console.log("bullshit");
+    writeOriginAttrForNet(originNode);  // augment all nodes in this net with attr "origin-node"; needed for buildPopUpMenu
+    makeAllAttributesInNetIntoNodes(originNode);  // make important attributes into discrete nodes of type "A"
+  }
+
   var menuHTML = buildPopUpMenu(e.target);
   $("#popUpMenu").html(menuHTML);
   $("#popUpMenu").show("fast");
@@ -349,7 +373,9 @@ function popUp(e,cursor) {
   });
 }
 
-function actionOnMenuItemClick(e,cursor,idx) {
+function getAllAttributesInNet() {} // dummy; remove
+
+/*function actionOnMenuItemClick(e,cursor,menuIndex) {
   // get next highlight color
   var colorArr = ["yellow",
                   "coral",
@@ -372,7 +398,7 @@ function actionOnMenuItemClick(e,cursor,idx) {
   // initilize new entry in keyname array
   keyname[keynum] = { name: null, values: [] };
 
-  if (idx === 0) {  // clicked on the first item in the pop-up menu, which is always "text"
+  if (menuIndex === 0) {  // clicked on the first item in the pop-up menu, which is always "text"
     keyname[keynum].name = "text";
     for (var i = 0; i < cursor.length; i++) {
       keyname[keynum].values.push($(cursor[i].nodeHTML).text());
@@ -389,13 +415,35 @@ function actionOnMenuItemClick(e,cursor,idx) {
       var attrArray = getAllAttributesInNet(o);  // computation-heavy...
       // menu item index is offset from attrArray index by 1
       // because menu always has "text" at index 1
-      keyname[keynum].name = attrArray[idx - 1].attr;  // will get written multiple times -- wasteful
-      if (!attrArray[idx - 1].value) {
-        console.log("null attrArray value; correcting");
-        attrArray[idx - 1].value = "";
+      if (attrArray.length > 0) {
+        keyname[keynum].name = attrArray[menuIndex - 1].attr;  // will get written multiple times -- wasteful
+
+        keyname[keynum].values.push(attrArray[menuIndex - 1].value);
       }
-      keyname[keynum].values.push(attrArray[idx - 1].value);
     }
+  }
+
+  // parse cursor for instances where dom_id !== expected_dom_id
+  // in those cases, insert a blank object into the cursor array
+  for (var a = 1; a < keyname.length; a++) {
+    for (var b = 0; b < keyname[0].values.length; b++) {
+      // use mask to construct, from key0 dom_id at index a, expected value for keyN dom_id at index a
+      var expected_dom_id = "0";
+      /// AAAAAHHHH FUCK WE DON'T HAVE DOM_ID's HERE
+      var key0fields = keyname[0].values[b].dom_id.split("_");
+      var keyNfields = keyname[a].values[b].dom_id.split("_");
+      for (var k = 0; k < mask.length; k++) {
+        expected_dom_id += "_" + (parseInt(key0fields[k]) + parseInt(mask[k]))
+      }
+      if (cursor[a].dom_id !== expected_dom_id) {
+        console.log("found missing value at key " + keyname.length + " index " + a);
+        //insert null value into cursor
+        cursor.splice(a,0,{nodeHTML: "<p></p>",
+                           dom_id: -1,
+                           origin_node: -1,
+                           origin_id: -1 });
+      }
+    
   }
 
   // update popCtrlWin contents
@@ -406,7 +454,7 @@ function actionOnMenuItemClick(e,cursor,idx) {
 
   killPopUp();
   return false;  // critical!
-}
+}*/
 
 
 function uploadScrape() {
@@ -469,11 +517,6 @@ function roundOutScrape() {
                                 color:   "",
                                 value:   ""} );
     });
-/*    console.log("logging out data in first thing");
-    scrape["0_0_0_0"].forEach(function(w) {
-      console.log(w);
-    });
-    console.log(scrape["0_0_0_0"].nativeDataTypes);*/
   });
   console.log("scrape",scrape);
 }
