@@ -13,13 +13,20 @@ mapTree();
 writeOriginAttributeForAllNodes();
 convertAttributesToNodes();
 activateListeners();
-//augmentCSS();  // do we need this?
 popControlWin();
-//main();
 //test();
 
 
 function test() {
+  var array1 = [97,98,99,100,101,102,103,104];
+  var array2 = ["a" , "b","c","d","f","g","h"];
+  for (var a = 0; a < array1.length; a++) {
+    if (array2[a].charCodeAt(0) != array1[a]) {
+      array2.splice(a,0,"#");
+    }
+    console.log("array 1 is " + array1[a] + ", array 2 is " + array2[a]);
+    
+  }
 }
 
 
@@ -152,29 +159,6 @@ function loadCursor(e,z) {  // put all items selected by z into array "cursor"
                    dom_id: dom_id,
                    origin_node: origin_node,
                    origin_id: origin_id } );
-    // if this is the first key
-    if (i === 0) {
-        console.log("key0fields",key0fields);
-      if (keyname.length === 0) {  // first dom_id of first key (key0) is basis for mask construction
-        key0fields = dom_id.split("_");
-        console.log("created key0fields as",key0fields);
-      } else {  // current key is keyN, not key0
-        // construct a mask that is diff btw idx=0 in keyN and idx=0 in key0
-        var keyNfields = dom_id.split("_");
-        console.log("keyNfields",keyNfields);
-        // mask is constructed by looping through longer dom_id, then is applied to shorter dom_id
-        var padLength = Math.abs(key0fields.length - keyNfields.length);
-        if (key0fields.length >= keyNfields.length) { // key0 item has more fields, or same as, keyN fields
-          keyNfields = keyNfields.concat(new Array(padLength).fill("0"));
-        } else {
-          key0fields = key0fields.concat(new Array(padLength).fill("0"));
-        }
-        // now that we have 2 arrays of same length, construct mask that is array of differences in digits
-        for (var j = 0; j < keyNfields.length; j++) {
-          mask[j] = parseInt(keyNfields[j]) - parseInt(key0fields[j]);
-        }
-      }
-    }
   });
 
   // filter out any dom_id's of different length than dom_id of clicked-on element
@@ -229,6 +213,28 @@ function loadCursor(e,z) {  // put all items selected by z into array "cursor"
     return c.dom_id.match(matchString);  // evaluates to null (falsy) if no match
   });
 
+  // if this is not the first key
+  if (keyname.length > 0) {  // first dom_id of first key (key0) is basis for mask construction
+    // construct a mask that is diff btw idx=0 in keyN and idx=0 in key0
+    var keyNfields = cursor[0].dom_id.split("_");
+    var key0fields = keyname[0].dom_id[0].split("_");
+    // mask is constructed by looping through longer dom_id, then is applied to shorter dom_id
+    var padLength = Math.abs(key0fields.length - keyNfields.length);
+    if (key0fields.length > keyNfields.length) {
+      keyNfields = keyNfields.concat(new Array(padLength).fill("0"));
+    }
+    if (key0fields.length < keyNfields.length) {
+      key0fields = key0fields.concat(new Array(padLength).fill("0"));
+    }
+    // now that we have 2 arrays of same length, construct mask that is array of differences in digits
+    for (var j = 0; j < keyNfields.length; j++) {
+      mask[j] = parseInt(keyNfields[j]) - parseInt(key0fields[j]);
+    }
+    console.log("key0 index0",key0fields);
+    console.log("key1 index0",keyNfields);
+    console.log("MASK: ",mask," length ",mask.length);
+  }
+
   console.log("cursor: ",cursor);
   return cursor;
 }
@@ -256,10 +262,10 @@ function mapTree() {
     var parentID = $(el).attr("dom_id");
     for (var i = 0; i < chlist.length; i++) {  // loop through immediate children of this element
       var newid = writeDOMid( chlist[i], parentID, i );
-      if ( $(chlist[i]).attr("dom_node_type") === "V") {  // takes too long -- not for production version
-        $("body").append("<div class='dpop' id='pop-" + newid + "' style='display: inline-block; position: absolute; padding: 6px; background: #eee; color: #000; border: 2px solid #1a1a1a; font-size: 90%; border-radius: 15px'>" + newid + "</div>");
-        $("#pop-" + newid).hide();
-      }
+      // if ( $(chlist[i]).attr("dom_node_type") === "V") {  // takes too long -- not for production version
+      //   $("body").append("<div class='dpop' id='pop-" + newid + "' style='display: inline-block; position: absolute; padding: 6px; background: #eee; color: #000; border: 2px solid #1a1a1a; font-size: 90%; border-radius: 15px'>" + newid + "</div>");
+      //   $("#pop-" + newid).hide();
+      // }
       todolist.push(chlist[i]);  // add this child element to end of todo list
     }
   }
@@ -408,7 +414,6 @@ function popUp(e,cursor) {
   var originNode = getOriginNode(e.target);
 
   if (!$(originNode).attr("origin-node")) {  // have "origin-node" attributes been written for this net?
-    console.log("bullshit");
     writeOriginAttrForNet(originNode);  // augment all nodes in this net with attr "origin-node"; needed for buildPopUpMenu
     makeAllAttributesInNetIntoNodes(originNode);  // make important attributes into discrete nodes of type "A"
   }
@@ -449,15 +454,17 @@ function actionOnMenuItemClick(e,cursor,menuIndex) {
   //                                        "http://1.2.3.100" ]}
 
   // initilize new entry in keyname array
-  keyname[keynum] = { name: null, values: [] };
+  keyname[keynum] = { name: null, values: [], dom_id: [] };
 
   if (menuIndex === 0) {  // clicked on the first item in the pop-up menu, which is always "text"
     // transfer data from "cursor" to "keyname"
-    keyname[keynum].name = cursor[menuIndex].name;
     for (var i = 0; i < cursor.length; i++) {
-      keyname[keynum].values.push($(cursor[menuIndex].nodeHTML).text());
-      keyname[keynum].dom_id = cursor[menuIndex].dom_id;
+      console.log("writing to keynum: dom_id",cursor[i].dom_id);
+      keyname[keynum].name = cursor[i].name;
+      keyname[keynum].values.push($(cursor[i].nodeHTML).text());
+      keyname[keynum].dom_id.push(cursor[i].dom_id);
     }
+    console.log("keyname["+keynum+"].dom_id["+(keyname[keynum].dom_id.length - 1)+"]",keyname[keynum].dom_id[(keyname[keynum].dom_id.length - 1)]);
     $(".highlighted").removeClass("highlighted").css("background-color",colorArr[colorIndex]);
   } else {         // clicked on item other than first one, meaning, an attribute
     //transfer data directly from DOM to "keyname"
@@ -470,33 +477,54 @@ function actionOnMenuItemClick(e,cursor,menuIndex) {
 
       keyname[keynum].name = $(A_nodes[menuIndex - 1]).attr("attrname");
       keyname[keynum].values.push($(A_nodes[menuIndex - 1]).text());
+      //keyname[keynum].dom_id.push() ?????
 
       // keyname[keynum].name = cursor[i].name;
       // keyname[keynum].values.push($(cursor[i].nodeHTML).text());
       // keyname[keynum].dom_id = cursor[i].dom_id;
   }
 
-  // // parse cursor for instances where dom_id !== expected_dom_id
-  // // in those cases, insert a blank object into the cursor array
-  // for (var a = 1; a < keyname.length; a++) {
-  //   for (var b = 0; b < keyname[0].values.length; b++) {
-  //     // use mask to construct, from key0 dom_id at index a, expected value for keyN dom_id at index a
-  //     var expected_dom_id = "0";
-  //     var key0fields = keyname[0].dom_id.split("_");
-  //     var keyNfields = keyname[a].dom_id.split("_");
-  //     for (var k = 0; k < mask.length; k++) {
-  //       expected_dom_id += "_" + (parseInt(key0fields[k]) + parseInt(mask[k]))
-  //     }
-  //     if (keyname[a].dom_id !== expected_dom_id) {
-  //       console.log("found missing value at key " + keyname.length + " index " + a);
-  //       //insert null value into values array
-  //       keyname[a].values.splice(a,0,{nodeHTML: "<p></p>",
-  //                                     dom_id: -1,
-  //                                     origin_node: -1,
-  //                                     origin_id: -1 });
-  //     }
-  //   }
-  // }
+  // parse cursor for instances where dom_id !== expected_dom_id
+  // in those instances, insert a blank object into the cursor array
+  for (var a = 1; a < keyname.length; a++) {
+    //console.log("dom id array for key no. "+a+" is ",keyname[a].dom_id);
+        //console.log("at index 1, keyname[1].dom_id is",keyname[a].dom_id[1]); // ok here
+
+    for (var b = 0; b < keyname[0].dom_id.length; b++) {
+        //console.log("at index 1, keyname[1].dom_id is",keyname[a].dom_id[1]); // ok here
+      // use mask to construct, from key0 dom_id at index a, expected value for keyN dom_id at index a
+
+      var key0fields = keyname[0].dom_id[b].split("_");
+      //console.log("key0fields",key0fields,"mask",mask);
+      var keyNfields = keyname[a].dom_id[b].split("_");
+      //pad shorter array with zeroes so it has same length as longer array
+      var padLength = Math.abs(key0fields.length - keyNfields.length);
+      if (key0fields.length > keyNfields.length) {
+        keyNfields = keyNfields.concat(new Array(padLength).fill("0"));
+      }
+      if (key0fields.length < keyNfields.length) {
+        key0fields = key0fields.concat(new Array(padLength).fill("0"));
+      }
+
+      var expected_dom_id_fields = [];
+        console.log("key0fields",key0fields);
+        console.log("maskfields",mask);
+      for (var k = 0; k < mask.length; k++) {
+        expected_dom_id_fields.push(parseInt(key0fields[k]) + parseInt(mask[k]));
+      }
+      console.log("expected:",expected_dom_id_fields);
+      console.log("saw:     ",keyNfields);
+      //console.log("dom id index "+b+" for key no. "+a+" is ",keyname[a].dom_id[b]);
+      //console.log("after padding: expected_dom_id is ",expected_dom_id_fields,", this dom id is",keyNfields);
+      if (keyname[a].dom_id[b] != expected_dom_id_fields) {
+        //console.log("missing value at index ",b);
+        //insert null value into values array
+        // keyname[a].values.splice(b,0,"xxx");
+        // keyname[a].dom_id.splice(b,0,"-1");
+      }
+    }
+    console.log("after null padding:",keyname);
+  }
 
   // update popCtrlWin contents
   // ******** UPGRADE: have user enter a key name for this set of values **********
@@ -583,12 +611,6 @@ function popControlWin() {
 function killPopUp(popOrigin) {
   $("#popUpMenu").remove();
   $(".highlighted").removeClass("highlighted");
-}
-
-
-function augmentCSS() {
-  // this allows our CSS definitions to be used on the web page we're scraping
-  $("head").append('<style type="text/css"> #popUp {border: 2px solid black; background-color: #F90; } #popUp ul {margin: 0; padding: 0; } .popUpItem {margin: 0; padding: 0 0 0 5px; } .popUpItem:hover {background-color: blue; color: white; } .highlighted {background-color: #3CE; } #popCtrlWin {border: 2px solid black; background-color: #FFEBDE; width: 120px; }</style>');
 }
 
 
