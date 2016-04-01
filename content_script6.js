@@ -510,17 +510,17 @@ function actionOnMenuItemClick(e,cursor,menuIndex) {
         console.log("key0fields",key0fields);
         console.log("maskfields",mask);
       for (var k = 0; k < mask.length; k++) {
-        expected_dom_id_fields.push(parseInt(key0fields[k]) + parseInt(mask[k]));
+        expected_dom_id_fields.push(parseInt(key0fields[k]) + parseInt(mask[k]) + "");  // each entry is string
       }
       console.log("expected:",expected_dom_id_fields);
       console.log("saw:     ",keyNfields);
       //console.log("dom id index "+b+" for key no. "+a+" is ",keyname[a].dom_id[b]);
       //console.log("after padding: expected_dom_id is ",expected_dom_id_fields,", this dom id is",keyNfields);
-      if (keyname[a].dom_id[b] != expected_dom_id_fields) {
-        //console.log("missing value at index ",b);
+      if (!arraysEqual(keyNfields,expected_dom_id_fields)) {
+        console.log("missing value at index ",b);
         //insert null value into values array
-        // keyname[a].values.splice(b,0,"xxx");
-        // keyname[a].dom_id.splice(b,0,"-1");
+        keyname[a].values.splice(b,0,"N/A");  // value not available
+        keyname[a].dom_id.splice(b,0,"-1");   // dummy value; necessary to keep dom_id array parallel to values array
       }
     }
     console.log("after null padding:",keyname);
@@ -533,6 +533,19 @@ function actionOnMenuItemClick(e,cursor,menuIndex) {
 
   killPopUp();
   return false;  // critical!
+}
+
+// from http://stackoverflow.com/questions/4025893/how-to-check-identical-array-in-most-efficient-way
+function arraysEqual(arr1, arr2) {
+    if(arr1.length !== arr2.length) {
+      return false;
+    }
+    for (var i = arr1.length; i--;) {
+      if (arr1[i] !== arr2[i]) {
+        return false;
+      }
+    }
+    return true;
 }
 
 
